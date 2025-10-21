@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     // Check if the user owns the reservation
-    if (existingReservation.rows[0].reserverUserId !== reserverUserId) {
+    if (existingReservation.rows[0].reserveruserid !== reserverUserId) {
       const response: ApiResponse = {
         success: false,
         error: 'You can only delete your own reservations'

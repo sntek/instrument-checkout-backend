@@ -27,14 +27,32 @@ async function getReservations(req: VercelRequest, res: VercelResponse) {
     let result
     if (instrumentName) {
       result = await sql`
-        SELECT * FROM reservations 
-        WHERE instrumentName = ${instrumentName as string}
-        ORDER BY createdAt DESC
+        SELECT 
+          id,
+          instrumentname as "instrumentName",
+          slot,
+          date,
+          reservername as "reserverName",
+          reserveruserid as "reserverUserId",
+          createdat as "createdAt",
+          updatedat as "updatedAt"
+        FROM reservations 
+        WHERE instrumentname = ${instrumentName as string}
+        ORDER BY createdat DESC
       `
     } else {
       result = await sql`
-        SELECT * FROM reservations 
-        ORDER BY createdAt DESC
+        SELECT 
+          id,
+          instrumentname as "instrumentName",
+          slot,
+          date,
+          reservername as "reserverName",
+          reserveruserid as "reserverUserId",
+          createdat as "createdAt",
+          updatedat as "updatedAt"
+        FROM reservations 
+        ORDER BY createdat DESC
       `
     }
     
@@ -88,7 +106,7 @@ async function createReservation(req: VercelRequest, res: VercelResponse) {
     // Check if slot is already reserved
     const existingReservation = await sql`
       SELECT * FROM reservations 
-      WHERE instrumentName = ${instrumentName} AND slot = ${slot} AND date = ${date}
+      WHERE instrumentname = ${instrumentName} AND slot = ${slot} AND date = ${date}
     `
     
     if (existingReservation.rows.length > 0) {
@@ -104,7 +122,7 @@ async function createReservation(req: VercelRequest, res: VercelResponse) {
     const now = new Date().toISOString()
     
     await sql`
-      INSERT INTO reservations (id, instrumentName, slot, date, reserverName, reserverUserId, createdAt, updatedAt)
+      INSERT INTO reservations (id, instrumentname, slot, date, reservername, reserveruserid, createdat, updatedat)
       VALUES (${id}, ${instrumentName}, ${slot}, ${date}, ${reserverName}, ${reserverUserId}, ${now}, ${now})
     `
     
