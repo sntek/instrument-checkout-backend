@@ -1,0 +1,23 @@
+{
+  "name": "instrument-checkout-backend",
+  "version": "1.0.0",
+  "description": "Instrument checkout system backend for Vercel",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.5.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vercel/node": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/daily-rollover",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
