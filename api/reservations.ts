@@ -24,15 +24,20 @@ async function getReservations(req: VercelRequest, res: VercelResponse) {
   try {
     const { instrumentName } = req.query
     
-    let query = 'SELECT * FROM reservations ORDER BY createdAt DESC'
-    let params: any[] = []
-    
+    let result
     if (instrumentName) {
-      query = 'SELECT * FROM reservations WHERE instrumentName = $1 ORDER BY createdAt DESC'
-      params = [instrumentName as string]
+      result = await sql`
+        SELECT * FROM reservations 
+        WHERE instrumentName = ${instrumentName as string}
+        ORDER BY createdAt DESC
+      `
+    } else {
+      result = await sql`
+        SELECT * FROM reservations 
+        ORDER BY createdAt DESC
+      `
     }
     
-    const result = await sql`${query}`
     const reservations = result.rows as Reservation[]
     
     // Transform reservations into the format expected by the frontend
