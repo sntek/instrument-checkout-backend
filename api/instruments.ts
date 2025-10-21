@@ -6,15 +6,15 @@ import { createCorsResponse, handleCorsPreflight } from '../utils/cors'
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflight()
+    return handleCorsPreflight(res)
   }
 
   if (req.method !== 'GET') {
-    return createCorsResponse({ error: 'Method not allowed' }, 405)
+    return createCorsResponse(res, { error: 'Method not allowed' }, 405)
   }
 
   try {
-    const result = await sql.query('SELECT * FROM instruments ORDER BY name')
+    const result = await sql`SELECT * FROM instruments ORDER BY name`
     const instruments: Instrument[] = result.rows.map((row: any) => ({
       name: row.name,
       os: row.os,
@@ -27,13 +27,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       data: instruments
     }
 
-    return createCorsResponse(response)
+    return createCorsResponse(res, response)
   } catch (error) {
     console.error('Error fetching instruments:', error)
     const response: ApiResponse = {
       success: false,
       error: 'Failed to fetch instruments'
     }
-    return createCorsResponse(response, 500)
+    return createCorsResponse(res, response, 500)
   }
 }

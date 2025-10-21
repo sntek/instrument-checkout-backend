@@ -3,12 +3,19 @@ import { DatabaseEnv } from '../types'
 
 export async function executeQuery(query: string, params: any[] = []) {
   try {
+    // Use sql template literal for queries
     if (params.length === 0) {
-      return await sql.query(query)
+      return await sql`${query}`
     } else {
-      // For parameterized queries, we need to use the sql template literal
-      // This is a simplified approach - in production you might want to use a query builder
-      return await sql.query(query, params)
+      // For parameterized queries, we need to use template literals
+      // This is a simplified approach - replace $1, $2, etc. with actual values
+      let processedQuery = query
+      params.forEach((param, index) => {
+        const placeholder = `$${index + 1}`
+        const value = param === null ? 'NULL' : `'${param}'`
+        processedQuery = processedQuery.replace(placeholder, value)
+      })
+      return await sql`${processedQuery}`
     }
   } catch (error) {
     console.error('Database query error:', error)
@@ -33,7 +40,7 @@ export async function executeTransaction(queries: Array<{ query: string; params:
 export async function initializeDatabase() {
   try {
     // Create reservations table
-    await executeQuery(`
+    await sql`
       CREATE TABLE IF NOT EXISTS reservations (
         id TEXT PRIMARY KEY,
         instrumentName TEXT NOT NULL,
@@ -44,26 +51,26 @@ export async function initializeDatabase() {
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
       )
-    `)
+    `
 
     // Create indexes for efficient queries
-    await executeQuery(`
+    await sql`
       CREATE INDEX IF NOT EXISTS idx_reservations_instrument_date_slot 
       ON reservations(instrumentName, date, slot)
-    `)
+    `
 
-    await executeQuery(`
+    await sql`
       CREATE INDEX IF NOT EXISTS idx_reservations_reserver 
       ON reservations(reserverName)
-    `)
+    `
 
-    await executeQuery(`
+    await sql`
       CREATE INDEX IF NOT EXISTS idx_reservations_reserver_user_id 
       ON reservations(reserverUserId)
-    `)
+    `
 
     // Create instruments table
-    await executeQuery(`
+    await sql`
       CREATE TABLE IF NOT EXISTS instruments (
         name TEXT PRIMARY KEY,
         os TEXT,
@@ -72,7 +79,7 @@ export async function initializeDatabase() {
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
       )
-    `)
+    `
 
     // Insert default instruments
     const defaultInstruments = [
@@ -88,11 +95,12 @@ export async function initializeDatabase() {
 
     for (const instrument of defaultInstruments) {
       const now = new Date().toISOString()
-      await executeQuery(`
+      
+      await sql`
         INSERT INTO instruments (name, os, group_name, ip, createdAt, updatedAt) 
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES (${instrument.name}, ${instrument.os}, ${instrument.group_name}, ${instrument.ip}, ${now}, ${now})
         ON CONFLICT (name) DO NOTHING
-      `, [instrument.name, instrument.os, instrument.group_name, instrument.ip, now, now])
+      `
     }
 
     console.log('Database initialized successfully')

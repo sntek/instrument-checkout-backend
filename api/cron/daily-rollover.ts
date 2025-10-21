@@ -5,11 +5,11 @@ import { createCorsResponse, handleCorsPreflight } from '../../utils/cors'
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflight()
+    return handleCorsPreflight(res)
   }
 
   if (req.method !== 'POST') {
-    return createCorsResponse({ error: 'Method not allowed' }, 405)
+    return createCorsResponse(res, { error: 'Method not allowed' }, 405)
   }
 
   try {
@@ -27,19 +27,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Step 1: Clear today's reservations
     console.log('Clearing today\'s reservations...')
-    const deleteTodayResult = await sql.query(
-      'DELETE FROM reservations WHERE date = $1',
-      [todayStr]
-    )
+    const deleteTodayResult = await sql`
+      DELETE FROM reservations WHERE date = ${todayStr}
+    `
     
-    console.log(`Deleted ${deleteTodayResult.rowCount} reservations from today (${todayStr})`)
+    console.log(`Deleted reservations from today (${todayStr})`)
     
     // Step 2: Get tomorrow's reservations
     console.log('Fetching tomorrow\'s reservations...')
-    const tomorrowReservations = await sql.query(
-      'SELECT * FROM reservations WHERE date = $1',
-      [tomorrowStr]
-    )
+    const tomorrowReservations = await sql`
+      SELECT * FROM reservations WHERE date = ${tomorrowStr}
+    `
     
     console.log(`Found ${tomorrowReservations.rows.length} reservations for tomorrow (${tomorrowStr})`)
     
@@ -52,19 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const newId = crypto.randomUUID()
         const now = new Date().toISOString()
         
-        return sql.query(`
+        return sql`
           INSERT INTO reservations (id, instrumentName, slot, date, reserverName, reserverUserId, createdAt, updatedAt)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `, [
-          newId,
-          reservation.instrumentName,
-          reservation.slot,
-          todayStr, // Copy to today
-          reservation.reserverName,
-          reservation.reserverUserId,
-          now,
-          now
-        ])
+          VALUES (${newId}, ${reservation.instrumentName}, ${reservation.slot}, ${todayStr}, ${reservation.reserverName}, ${reservation.reserverUserId}, ${now}, ${now})
+        `
       })
       
       await Promise.all(insertPromises)
@@ -73,22 +62,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Step 4: Clear tomorrow's reservations
     console.log('Clearing tomorrow\'s reservations...')
-    const deleteTomorrowResult = await sql.query(
-      'DELETE FROM reservations WHERE date = $1',
-      [tomorrowStr]
-    )
+    const deleteTomorrowResult = await sql`
+      DELETE FROM reservations WHERE date = ${tomorrowStr}
+    `
     
-    console.log(`Deleted ${deleteTomorrowResult.rowCount} reservations from tomorrow (${tomorrowStr})`)
+    console.log(`Deleted reservations from tomorrow (${tomorrowStr})`)
     
     console.log('Daily reservation rollover completed successfully')
     
-    return createCorsResponse({ 
+    return createCorsResponse(res, { 
       success: true, 
       message: 'Daily reservation rollover completed successfully' 
     })
   } catch (error) {
     console.error('Error during daily reservation rollover:', error)
-    return createCorsResponse({ 
+    return createCorsResponse(res, { 
       success: false, 
       error: 'Daily reservation rollover failed' 
     }, 500)
