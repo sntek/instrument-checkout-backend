@@ -1,30 +1,13 @@
-import { VercelRequest, VercelResponse } from '@vercel/node'
-import { sql } from '@vercel/postgres'
-import { Reservation, CreateReservationRequest, ApiResponse, ReservationsByInstrument } from '../types'
-import { createCorsResponse, handleCorsPreflight } from '../utils/cors'
+import { sql } from '@vercel/postgres';
+import { NextRequest, NextResponse } from 'next/server';
+import { Reservation, CreateReservationRequest, ApiResponse, ReservationsByInstrument } from '@/types';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return handleCorsPreflight(res)
-  }
-
-  if (req.method === 'GET') {
-    return await getReservations(req, res)
-  }
-
-  if (req.method === 'POST') {
-    return await createReservation(req, res)
-  }
-
-  return createCorsResponse(res, { error: 'Method not allowed' }, 405)
-}
-
-async function getReservations(req: VercelRequest, res: VercelResponse) {
+export async function GET(req: NextRequest) {
   try {
-    const { instrumentName } = req.query
+    const { searchParams } = new URL(req.url);
+    const instrumentName = searchParams.get('instrumentName');
     
-    let result
+    let result;
     if (instrumentName) {
       result = await sql`
         SELECT 
@@ -37,9 +20,9 @@ async function getReservations(req: VercelRequest, res: VercelResponse) {
           createdat as "createdAt",
           updatedat as "updatedAt"
         FROM reservations 
-        WHERE instrumentname = ${instrumentName as string}
+        WHERE instrumentname = ${instrumentName}
         ORDER BY createdat DESC
-      `
+      `;
     } else {
       result = await sql`
         SELECT 
@@ -53,78 +36,74 @@ async function getReservations(req: VercelRequest, res: VercelResponse) {
           updatedat as "updatedAt"
         FROM reservations 
         ORDER BY createdat DESC
-      `
+      `;
     }
     
-    const reservations = result.rows as Reservation[]
+    const reservations = result.rows as Reservation[];
     
-    // Transform reservations into the format expected by the frontend
-    const reservationsByInstrument: ReservationsByInstrument = {}
+    const reservationsByInstrument: ReservationsByInstrument = {};
     
     reservations.forEach(reservation => {
       if (!reservationsByInstrument[reservation.instrumentName]) {
-        reservationsByInstrument[reservation.instrumentName] = {}
+        reservationsByInstrument[reservation.instrumentName] = {};
       }
-      const slotKey = `${reservation.date}-${reservation.slot}`
-      // Store both reserver name, user ID, and reservation ID for deletion
+      const slotKey = `${reservation.date}-${reservation.slot}`;
       reservationsByInstrument[reservation.instrumentName][slotKey] = {
         reserverName: reservation.reserverName,
         reserverUserId: reservation.reserverUserId,
         id: reservation.id
-      }
-    })
+      };
+    });
     
     const response: ApiResponse<ReservationsByInstrument> = {
       success: true,
       data: reservationsByInstrument
-    }
+    };
     
-    return createCorsResponse(res, response)
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Error fetching reservations:', error)
+    console.error('Error fetching reservations:', error);
     const response: ApiResponse = {
       success: false,
       error: 'Failed to fetch reservations'
-    }
-    return createCorsResponse(res, response, 500)
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 }
 
-async function createReservation(req: VercelRequest, res: VercelResponse) {
+export async function POST(req: NextRequest) {
   try {
-    const body: CreateReservationRequest = req.body
-    const { instrumentName, slot, date, reserverName, reserverUserId } = body
+    const body: CreateReservationRequest = await req.json();
+    const { instrumentName, slot, date, reserverName, reserverUserId } = body;
     
     if (!instrumentName || !slot || !date || !reserverName || !reserverUserId) {
       const response: ApiResponse = {
         success: false,
         error: 'Missing required fields: instrumentName, slot, date, reserverName, reserverUserId'
-      }
-      return createCorsResponse(res, response, 400)
+      };
+      return NextResponse.json(response, { status: 400 });
     }
     
-    // Check if slot is already reserved
     const existingReservation = await sql`
       SELECT * FROM reservations 
       WHERE instrumentname = ${instrumentName} AND slot = ${slot} AND date = ${date}
-    `
+    `;
     
     if (existingReservation.rows.length > 0) {
       const response: ApiResponse = {
         success: false,
         error: 'Slot is already reserved'
-      }
-      return createCorsResponse(res, response, 409)
+      };
+      return NextResponse.json(response, { status: 409 });
     }
     
-    // Create new reservation
-    const id = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
     
     await sql`
       INSERT INTO reservations (id, instrumentname, slot, date, reservername, reserveruserid, createdat, updatedat)
       VALUES (${id}, ${instrumentName}, ${slot}, ${date}, ${reserverName}, ${reserverUserId}, ${now}, ${now})
-    `
+    `;
     
     const response: ApiResponse<Reservation> = {
       success: true,
@@ -138,14 +117,15 @@ async function createReservation(req: VercelRequest, res: VercelResponse) {
         createdAt: now,
         updatedAt: now
       }
-    }
-    return createCorsResponse(res, response, 201)
+    };
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
-    console.error('Error creating reservation:', error)
+    console.error('Error creating reservation:', error);
     const response: ApiResponse = {
       success: false,
       error: 'Failed to create reservation'
-    }
-    return createCorsResponse(res, response, 500)
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 }
+

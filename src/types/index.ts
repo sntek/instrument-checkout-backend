@@ -2,6 +2,7 @@ export interface Instrument {
   name: string
   os?: string
   group?: string
+  group_name?: string // Backend field name
   ip?: string
 }
 
@@ -30,22 +31,14 @@ export interface ApiResponse<T = any> {
   error?: string
 }
 
-export interface ReservationsByInstrument {
-  [instrumentName: string]: {
-    [slotKey: string]: {
-      reserverName: string
-      reserverUserId: string
-      id: string
-    }
-  }
+export interface ReservationInfo {
+  reserverName: string
+  reserverUserId: string
+  id: string
 }
 
-export interface DatabaseEnv {
-  POSTGRES_URL: string
-  POSTGRES_PRISMA_URL: string
-  POSTGRES_URL_NON_POOLING: string
-  POSTGRES_USER: string
-  POSTGRES_HOST: string
-  POSTGRES_PASSWORD: string
-  POSTGRES_DATABASE: string
+export interface ReservationsByInstrument {
+  [instrumentName: string]: {
+    [slotKey: string]: ReservationInfo
+  }
 }
