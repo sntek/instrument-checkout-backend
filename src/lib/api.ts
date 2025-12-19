@@ -40,7 +40,7 @@ class ApiClient {
     }
     
     // Transform the data to handle backend field mapping
-    const instruments = response.data?.map(instrument => ({
+    const instruments = (response.data || []).map(instrument => ({
       name: instrument.name,
       os: instrument.os,
       group: instrument.group || instrument.group_name, // Handle both field names
@@ -62,7 +62,7 @@ class ApiClient {
     
     // Clean up malformed data from backend
     const cleanedData: ReservationsByInstrument = {}
-    const rawData = response.data!
+    const rawData = response.data || {}
     
     for (const [instrument, slots] of Object.entries(rawData)) {
       // Skip entries with undefined instrument names
