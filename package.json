@@ -4,19 +4,20 @@
   "description": "Instrument checkout system backend for Vercel",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.36.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/postcss": "^4.1.18",
     "@vercel/postgres": "^0.5.1",
+    "better-auth": "^1.4.10",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
@@ -24,6 +25,7 @@
     "lucide-react": "^0.562.0",
     "next": "^16.1.0",
     "next-themes": "^0.4.6",
+    "pg": "^8.16.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "sonner": "^2.0.7",
@@ -37,12 +39,11 @@
     "@types/react-dom": "^19.2.3",
     "@vercel/node": "^3.0.0",
     "autoprefixer": "^10.4.23",
-    "pg": "^8.16.3",
+    "cross-env": "^10.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.3",
-    "cross-env": "^10.1.0"
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.x"

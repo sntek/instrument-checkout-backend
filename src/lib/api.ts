@@ -2,7 +2,7 @@ import { ApiResponse, CreateReservationRequest, Instrument, Reservation, Reserva
 
 // Use a relative URL for both local development and production.
 // This ensures that when running locally (e.g., via `vercel dev`), the app hits the local API.
-const API_BASE_URL = typeof window !== 'undefined' ? '' : 'https://instrument-checkout-backend.vercel.app'
+const API_BASE_URL = typeof window !== 'undefined' ? '' : 'https://instrument-checkout.vercel.app'
 
 class ApiClient {
   private baseUrl: string

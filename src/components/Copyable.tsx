@@ -9,7 +9,8 @@ export function Copyable(props: CopyableProps) {
   const { text } = props
   const [copied, setCopied] = React.useState(false)
 
-  async function handleCopy() {
+  async function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation()
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text)
