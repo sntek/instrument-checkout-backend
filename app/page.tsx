@@ -1,121 +1,193 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
-import { Header } from '@/components/Header';
-import { InstrumentCard } from '@/components/InstrumentCard';
-import { CreateInstrumentDialog } from '@/components/CreateInstrumentDialog';
-import { SignInRequired } from '@/components/SignInRequired';
-import { instruments as staticInstruments } from '@/data/instruments';
-import { useReservations } from '@/hooks/useReservations';
 import { apiClient } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
-import { Instrument } from '@/types';
+import { SignInRequired } from '@/components/SignInRequired';
+import { Team } from '@/types';
+import { Plus, Loader2, ArrowRight } from 'lucide-react';
+import { UserMenu } from '@/components/UserMenu';
 
-export default function App() {
-  const [openInstrument, setOpenInstrument] = React.useState<string | null>(null);
-  const [instruments, setInstruments] = React.useState<Instrument[]>(staticInstruments);
-  
+export default function Dashboard() {
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
   const { data: session, isPending } = authClient.useSession();
 
-  const currentDisplayName = session?.user?.name || "Guest";
-  const currentUserId = session?.user?.id || "guest-user";
+  // Admin create team state
+  const [showCreate, setShowCreate] = useState(false);
+  const [teamName, setTeamName] = useState('');
+  const [teamSlug, setTeamSlug] = useState('');
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [adminUser, setAdminUser] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [creating, setCreating] = useState(false);
 
-  const { 
-    reservations, 
-    createReservation, 
-    deleteReservation, 
-    optimisticUpdates  } = useReservations({ pollingInterval: 30000, enablePolling: true });
-
-  const fetchInstruments = React.useCallback(() => {
-    apiClient.getInstruments().then(setInstruments).catch(console.error);
+  useEffect(() => {
+    apiClient.getTeams().then(setTeams).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  React.useEffect(() => {
-    fetchInstruments();
-  }, [fetchInstruments]);
-
-  function isSlotReserved(instrumentName: string, slot: string, date: string) {
-    return Boolean(reservations[instrumentName]?.[`${date}-${slot}`]);
+  function nameToSlug(name: string) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
 
-  function getReservationInfo(instrumentName: string, slot: string, date: string) {
-    return reservations[instrumentName]?.[`${date}-${slot}`];
+  function handleNameChange(value: string) {
+    setTeamName(value);
+    if (!slugEdited) setTeamSlug(nameToSlug(value));
   }
 
-  function isOptimisticallyUpdating(instrumentName: string, slot: string, date: string) {
-    const slotKey = `${date}-${slot}`;
-    const updateKey = `${instrumentName}-${slotKey}`;
-    return optimisticUpdates.has(updateKey);
-  }
-
-  async function toggleSlot(instrumentName: string, slot: string, date: string) {
-    const reservationInfo = getReservationInfo(instrumentName, slot, date);
-    const isReserved = Boolean(reservationInfo);
-    
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!teamName || !teamSlug) return;
+    setCreating(true);
     try {
-      if (isReserved) {
-        if (reservationInfo?.id) {
-          await deleteReservation(reservationInfo.id, currentUserId, instrumentName, slot, date);
-        }
-      } else {
-        await createReservation({
-          instrumentName,
-          slot,
-          date,
-          reserverName: currentDisplayName,
-          reserverUserId: currentUserId
-        });
-      }
-    } catch (error) {
-      console.error('Error toggling slot:', error);
-      if (error instanceof Error && error.message.includes('You can only delete your own reservations')) {
-        toast.warning('Access Denied', {
-          description: 'You can only delete your own reservations.',
-        });
-      } else {
-        toast.error('Error', {
-          description: 'Something went wrong. Please try again.',
-        });
-      }
+      await apiClient.createTeam(teamName, teamSlug, `${adminUser}:${adminPass}`);
+      toast.success('Team created');
+      setShowCreate(false);
+      setTeamName('');
+      setTeamSlug('');
+      setSlugEdited(false);
+      setAdminUser('');
+      setAdminPass('');
+      const updated = await apiClient.getTeams();
+      setTeams(updated);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create team');
+    } finally {
+      setCreating(false);
     }
+  }
+
+  if (isPending || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <SignInRequired />
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <Header />
-      
-      <section className="py-16 px-6 mx-auto w-full">
-        {isPending ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-          </div>
-        ) : !session ? (
-          <SignInRequired />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
-            {instruments.map((instrument) => (
-              <InstrumentCard
-                key={instrument.name}
-                instrument={instrument}
-                isOpen={openInstrument === instrument.name}
-                onOpenChange={(open) => setOpenInstrument(open ? instrument.name : null)}
-                reservationsByInstrument={reservations}
-                currentDisplayName={currentDisplayName}
-                currentUserId={currentUserId}
-                onToggleSlot={toggleSlot}
-                onIsSlotReserved={isSlotReserved}
-                onIsOptimisticallyUpdating={isOptimisticallyUpdating}
-                onUpdate={fetchInstruments}
-              />
-            ))}
-          </div>
-        )}
+      {/* Header */}
+      <section className="relative py-16 px-6 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10" />
+        <div className="absolute top-6 right-6 z-50">
+          <UserMenu />
+        </div>
+        <div className="relative max-w-7xl mx-auto flex flex-col items-center justify-center">
+          <h1 className="text-5xl md:text-6xl font-bold text-white text-center">
+            Instrument Checkout
+          </h1>
+          <p className="mt-3 text-slate-400 text-lg">Select your team</p>
+        </div>
       </section>
-      
-      {session && (
-        <div className="fixed bottom-6 right-6 z-40">
-          <CreateInstrumentDialog onInstrumentCreated={fetchInstruments} />
+
+      {/* Team grid */}
+      <section className="px-6 pb-16 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {teams.map((team) => (
+            <Link
+              key={team.slug}
+              href={`/${team.slug}`}
+              className="group relative bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-8 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 flex flex-col items-center justify-center min-h-[160px]"
+            >
+              <h2 className="text-2xl font-semibold text-white group-hover:text-cyan-300 transition-colors text-center">
+                {team.name}
+              </h2>
+              <p className="text-sm text-slate-500 mt-2 font-mono">/{team.slug}</p>
+              <ArrowRight className="absolute bottom-4 right-4 w-5 h-5 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+            </Link>
+          ))}
+
+          {/* Create team button */}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="group relative bg-slate-800/30 backdrop-blur-sm border border-dashed border-slate-700 rounded-xl p-8 hover:border-cyan-500/50 transition-all duration-300 flex flex-col items-center justify-center min-h-[160px] cursor-pointer"
+          >
+            <Plus className="w-8 h-8 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+            <p className="text-sm text-slate-500 mt-2 group-hover:text-slate-300 transition-colors">New Team (Admin)</p>
+          </button>
+        </div>
+      </section>
+
+      {/* Create team modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowCreate(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-white mb-4">Create Team</h3>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Team Name</label>
+                <input
+                  value={teamName}
+                  onChange={e => handleNameChange(e.target.value)}
+                  placeholder="e.g. Rocket Lab 🚀"
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Slug (URL path)</label>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-slate-600">/</span>
+                  <input
+                    value={teamSlug}
+                    onChange={e => { setTeamSlug(e.target.value); setSlugEdited(true); }}
+                    placeholder="rocket-lab"
+                    required
+                    pattern="[a-z0-9-]+"
+                    className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white font-mono placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <p className="text-xs text-slate-500 mb-3">Admin credentials required</p>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 mb-1 block">Username</label>
+                    <input
+                      value={adminUser}
+                      onChange={e => setAdminUser(e.target.value)}
+                      required
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 mb-1 block">Password</label>
+                    <input
+                      type="password"
+                      value={adminPass}
+                      onChange={e => setAdminPass(e.target.value)}
+                      required
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white text-sm rounded-lg transition-all"
+                >
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {creating ? 'Creating...' : 'Create Team'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

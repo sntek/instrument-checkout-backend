@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiResponse } from '@/types';
 
@@ -8,7 +8,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    
+
     if (!id) {
       const response: ApiResponse = {
         success: false,
@@ -16,9 +16,9 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 400 });
     }
-    
+
     const { reserverUserId } = await req.json() || {};
-    
+
     if (!reserverUserId) {
       const response: ApiResponse = {
         success: false,
@@ -26,11 +26,12 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 400 });
     }
-    
-    const existingReservation = await sql`
-      SELECT * FROM reservations WHERE id = ${id}
-    `;
-    
+
+    const existingReservation = await pool.query(
+      'SELECT * FROM reservations WHERE id = $1',
+      [id]
+    );
+
     if (existingReservation.rows.length === 0) {
       const response: ApiResponse = {
         success: false,
@@ -38,7 +39,7 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     if (existingReservation.rows[0].reserveruserid !== reserverUserId) {
       const response: ApiResponse = {
         success: false,
@@ -46,11 +47,9 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
-    await sql`
-      DELETE FROM reservations WHERE id = ${id}
-    `;
-    
+
+    await pool.query('DELETE FROM reservations WHERE id = $1', [id]);
+
     const response: ApiResponse = {
       success: true,
       data: { deleted: true }
@@ -65,4 +64,3 @@ export async function DELETE(
     return NextResponse.json(response, { status: 500 });
   }
 }
-

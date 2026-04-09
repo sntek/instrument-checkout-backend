@@ -1,15 +1,24 @@
-import { sql } from '@vercel/postgres';
-import { NextResponse } from 'next/server';
+import pool from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
 import { Instrument, ApiResponse } from '@/types';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const result = await sql`SELECT * FROM instruments ORDER BY name`;
+    const teamSlug = req.nextUrl.searchParams.get('team');
+
+    let result;
+    if (teamSlug) {
+      result = await pool.query('SELECT * FROM instruments WHERE team_slug = $1 ORDER BY name', [teamSlug]);
+    } else {
+      result = await pool.query('SELECT * FROM instruments ORDER BY name');
+    }
+
     const instruments: Instrument[] = result.rows.map((row: any) => ({
       name: row.name,
       os: row.os,
       group: row.group_name,
-      ip: row.ip
+      ip: row.ip,
+      team_slug: row.team_slug
     }));
 
     const response: ApiResponse<Instrument[]> = {
@@ -20,10 +29,6 @@ export async function GET() {
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching instruments:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: 'Failed to fetch instruments'
-    };
     return NextResponse.json({ success: false, error: 'Failed to fetch instruments' }, { status: 500 });
   }
 }
@@ -48,27 +53,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Original instrument name is required' }, { status:400 });
     }
 
-    // Start a transaction if possible, or run sequentially
-    // Since we are using @vercel/postgres, we can use sql.begin() or just run queries.
-    // Vercel postgres doesn't support transactions in the simple `sql` template literal as easily as a client.
-    // But we can run multiple queries.
-
-    // If name changed, we need to update reservations too
     if (name && name !== oldName) {
-      await sql`UPDATE reservations SET instrumentName = ${name} WHERE instrumentName = ${oldName}`;
+      await pool.query('UPDATE reservations SET instrumentName = $1 WHERE instrumentName = $2', [name, oldName]);
     }
 
-    const result = await sql`
-      UPDATE instruments 
-      SET 
-        name = COALESCE(${name}, name),
-        os = ${os},
-        group_name = ${group},
-        ip = ${ip},
-        updatedAt = ${new Date().toISOString()}
-      WHERE name = ${oldName}
-      RETURNING *
-    `;
+    const result = await pool.query(
+      `UPDATE instruments
+       SET name = COALESCE($1, name), os = $2, group_name = $3, ip = $4, updatedAt = $5
+       WHERE name = $6
+       RETURNING *`,
+      [name, os, group, ip, new Date().toISOString(), oldName]
+    );
 
     if (result.rowCount === 0) {
       return NextResponse.json({ success: false, error: 'Instrument not found' }, { status: 404 });
@@ -92,17 +87,22 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, os, group, ip } = body;
+    const { name, os, group, ip, team_slug } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: 'Instrument name is required' }, { status: 400 });
     }
+    if (!team_slug) {
+      return NextResponse.json({ success: false, error: 'Team is required' }, { status: 400 });
+    }
 
-    const result = await sql`
-      INSERT INTO instruments (name, os, group_name, ip, createdAt, updatedAt)
-      VALUES (${name}, ${os}, ${group}, ${ip}, ${new Date().toISOString()}, ${new Date().toISOString()})
-      RETURNING *
-    `;
+    const now = new Date().toISOString();
+    const result = await pool.query(
+      `INSERT INTO instruments (name, os, group_name, ip, team_slug, createdAt, updatedAt)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [name, os, group, ip, team_slug, now, now]
+    );
 
     return NextResponse.json({
       success: true,
@@ -115,7 +115,6 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating instrument:', error);
-    // Check for unique constraint violation (instrument name already exists)
     if ((error as any).code === '23505') {
       return NextResponse.json({ success: false, error: 'Instrument name already exists' }, { status: 409 });
     }
@@ -132,14 +131,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Instrument name is required' }, { status: 400 });
     }
 
-    // Optional: Delete reservations for this instrument first to maintain cleanliness
-    await sql`DELETE FROM reservations WHERE instrumentName = ${name}`;
+    await pool.query('DELETE FROM reservations WHERE instrumentName = $1', [name]);
 
-    const result = await sql`
-      DELETE FROM instruments 
-      WHERE name = ${name}
-      RETURNING *
-    `;
+    const result = await pool.query('DELETE FROM instruments WHERE name = $1 RETURNING *', [name]);
 
     if (result.rowCount === 0) {
       return NextResponse.json({ success: false, error: 'Instrument not found' }, { status: 404 });
@@ -154,4 +148,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: 'Failed to delete instrument' }, { status: 500 });
   }
 }
-

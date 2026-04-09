@@ -189,15 +189,15 @@ export function InstrumentCard({
         </div>
       ) : (
         <>
-          <h3 className="text-xl md:text-2xl font-semibold text-white mb-3 truncate">
-            {instrument.name}
+          <h3 className="text-xl md:text-2xl font-semibold text-white mb-3 overflow-visible">
+            <Copyable text={instrument.name} label="Copy device name" />
           </h3>
           <div className="text-base md:text-lg text-gray-400 space-y-1.5">
             <p><span className="text-gray-300">OS:</span> {instrument.os ?? '—'}</p>
             <p><span className="text-gray-300">Group:</span> {instrument.group ?? '—'}</p>
             <p>
               <span className="text-gray-300">IP:</span>{' '}
-              {instrument.ip ? <Copyable text={instrument.ip} /> : '—'}
+              {instrument.ip ? <Copyable text={instrument.ip} label="Copy IP Address" /> : '—'}
             </p>
           </div>
         </>
