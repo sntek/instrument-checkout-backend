@@ -1,82 +1,209 @@
-import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ArrowLeft, Edit2, Trash2, Check, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { UserMenu } from "@/components/UserMenu";
+import { apiClient } from "@/lib/api";
+import { Team } from "@/types";
 
-export function Header() {
-  const { data: session } = authClient.useSession();
+interface HeaderProps {
+  teamName?: string;
+  team?: Team | null;
+  onTeamUpdated?: () => void;
+}
+
+export function Header({ teamName, team, onTeamUpdated }: HeaderProps) {
   const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editSlug, setEditSlug] = useState('');
+  const [adminUser, setAdminUser] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [delAdminUser, setDelAdminUser] = useState('');
+  const [delAdminPass, setDelAdminPass] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  const handleSignOut = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.refresh();
-        },
-      },
-    });
-  };
+  function startEdit() {
+    if (!team) return;
+    setEditName(team.name);
+    setEditSlug(team.slug);
+    setAdminUser('');
+    setAdminPass('');
+    setEditing(true);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!team) return;
+    setSaving(true);
+    try {
+      await apiClient.updateTeam(team.slug, editName, editSlug, `${adminUser}:${adminPass}`);
+      toast.success('Team updated');
+      setEditing(false);
+      if (editSlug !== team.slug) {
+        router.push(`/${editSlug}`);
+      } else if (onTeamUpdated) {
+        onTeamUpdated();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update team');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(e: React.FormEvent) {
+    e.preventDefault();
+    if (!team) return;
+    setDeleting(true);
+    try {
+      await apiClient.deleteTeam(team.slug, `${delAdminUser}:${delAdminPass}`);
+      toast.success('Team deleted');
+      router.push('/');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete team');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
-    <section className="relative py-16 px-6 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
-      
-      {/* Top right user info */}
-      {session && (
+    <>
+      <section className="relative py-16 px-6 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
+
+        {/* Top left — back to teams */}
+        <div className="absolute top-6 left-6 z-50">
+          <Link href="/" className="flex items-center gap-2 text-sm text-slate-400 hover:text-cyan-400 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            All Teams
+          </Link>
+        </div>
+
+        {/* Top right user info */}
         <div className="absolute top-6 right-6 z-50">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex items-center justify-center w-10 h-10 rounded-full border border-slate-700 bg-slate-800 hover:bg-slate-700 transition-colors overflow-hidden">
-                <svg 
-                  className="w-6 h-6 text-slate-400" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth="2" 
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
-                    />
-                  </svg>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 bg-slate-900 border-slate-700 text-white p-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-semibold truncate">{session.user.name}</p>
-                  <p className="text-xs text-slate-400 truncate">{session.user.email}</p>
-                </div>
-                <div className="h-px bg-slate-800 w-full" />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleSignOut}
-                  className="w-full text-left justify-start text-slate-300 hover:text-white hover:bg-slate-800 h-8 px-2"
+          <UserMenu />
+        </div>
+
+        {/* Centered Logo + admin controls */}
+        <div className="relative max-w-7xl mx-auto flex flex-col items-center justify-center">
+          <div className="flex items-center justify-center gap-3">
+            <h1 className="text-6xl md:text-7xl font-bold text-white text-center">
+              {teamName || 'Loading...'}
+            </h1>
+            {team && (
+              <div className="flex gap-1 ml-2">
+                <button
+                  onClick={startEdit}
+                  className="p-1.5 rounded-full text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
+                  title="Edit team (admin)"
                 >
-                  <svg 
-                    className="w-4 h-4 mr-2" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  Sign Out
-                </Button>
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => { setShowDelete(true); setDelAdminUser(''); setDelAdminPass(''); }}
+                  className="p-1.5 rounded-full text-slate-500 hover:text-red-400 hover:bg-slate-800/50 transition-colors"
+                  title="Delete team (admin)"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-            </PopoverContent>
-          </Popover>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Edit team modal */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setEditing(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-white mb-4">Edit Team</h3>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Team Name</label>
+                <input
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Slug (URL path)</label>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-slate-600">/</span>
+                  <input
+                    value={editSlug}
+                    onChange={e => setEditSlug(e.target.value)}
+                    required
+                    pattern="[a-z0-9-]+"
+                    className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white font-mono focus:border-cyan-500 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              <div className="border-t border-slate-800 pt-4">
+                <p className="text-xs text-slate-500 mb-3">Admin credentials required</p>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 mb-1 block">Username</label>
+                    <input value={adminUser} onChange={e => setAdminUser(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 mb-1 block">Password</label>
+                    <input type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white text-sm rounded-lg transition-all">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* Centered Logo */}
-      <div className="relative max-w-7xl mx-auto flex flex-col items-center justify-center">
-        <div className="flex items-center justify-center gap-6">
-          <h1 className="text-6xl md:text-7xl font-bold text-white text-center">Rocket Lab 🚀</h1>
+      {/* Delete team modal */}
+      {showDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowDelete(false)}>
+          <div className="bg-slate-900 border border-red-900/50 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-semibold text-red-400 mb-2">Delete Team</h3>
+            <p className="text-sm text-slate-400 mb-4">
+              This will permanently delete <span className="text-white font-semibold">{team?.name}</span> and all its instruments and reservations.
+            </p>
+            <form onSubmit={handleDelete} className="space-y-4">
+              <div className="border-t border-slate-800 pt-4">
+                <p className="text-xs text-slate-500 mb-3">Admin credentials required</p>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 mb-1 block">Username</label>
+                    <input value={delAdminUser} onChange={e => setDelAdminUser(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-slate-500 mb-1 block">Password</label>
+                    <input type="password" value={delAdminPass} onChange={e => setDelAdminPass(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setShowDelete(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button type="submit" disabled={deleting} className="flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white text-sm rounded-lg transition-all">
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {deleting ? 'Deleting...' : 'Delete Team'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-    </section>
+      )}
+    </>
   )
 }

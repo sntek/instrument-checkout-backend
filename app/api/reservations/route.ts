@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { Reservation, CreateReservationRequest, ApiResponse, ReservationsByInstrument } from '@/types';
 
@@ -6,43 +6,42 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const instrumentName = searchParams.get('instrumentName');
-    
+    const teamSlug = searchParams.get('team');
+
     let result;
     if (instrumentName) {
-      result = await sql`
-        SELECT 
-          id,
-          instrumentname as "instrumentName",
-          slot,
-          date,
-          reservername as "reserverName",
-          reserveruserid as "reserverUserId",
-          createdat as "createdAt",
-          updatedat as "updatedAt"
-        FROM reservations 
-        WHERE instrumentname = ${instrumentName}
-        ORDER BY createdat DESC
-      `;
+      result = await pool.query(
+        `SELECT id, instrumentname AS "instrumentName", slot, date,
+                reservername AS "reserverName", reserveruserid AS "reserverUserId",
+                createdat AS "createdAt", updatedat AS "updatedAt"
+         FROM reservations WHERE instrumentname = $1 ORDER BY createdat DESC`,
+        [instrumentName]
+      );
+    } else if (teamSlug) {
+      // Get reservations for all instruments in this team
+      result = await pool.query(
+        `SELECT r.id, r.instrumentname AS "instrumentName", r.slot, r.date,
+                r.reservername AS "reserverName", r.reserveruserid AS "reserverUserId",
+                r.createdat AS "createdAt", r.updatedat AS "updatedAt"
+         FROM reservations r
+         JOIN instruments i ON r.instrumentname = i.name
+         WHERE i.team_slug = $1
+         ORDER BY r.createdat DESC`,
+        [teamSlug]
+      );
     } else {
-      result = await sql`
-        SELECT 
-          id,
-          instrumentname as "instrumentName",
-          slot,
-          date,
-          reservername as "reserverName",
-          reserveruserid as "reserverUserId",
-          createdat as "createdAt",
-          updatedat as "updatedAt"
-        FROM reservations 
-        ORDER BY createdat DESC
-      `;
+      result = await pool.query(
+        `SELECT id, instrumentname AS "instrumentName", slot, date,
+                reservername AS "reserverName", reserveruserid AS "reserverUserId",
+                createdat AS "createdAt", updatedat AS "updatedAt"
+         FROM reservations ORDER BY createdat DESC`
+      );
     }
-    
+
     const reservations = result.rows as Reservation[];
-    
+
     const reservationsByInstrument: ReservationsByInstrument = {};
-    
+
     reservations.forEach(reservation => {
       if (!reservationsByInstrument[reservation.instrumentName]) {
         reservationsByInstrument[reservation.instrumentName] = {};
@@ -54,12 +53,12 @@ export async function GET(req: NextRequest) {
         id: reservation.id
       };
     });
-    
+
     const response: ApiResponse<ReservationsByInstrument> = {
       success: true,
       data: reservationsByInstrument
     };
-    
+
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching reservations:', error);
@@ -75,7 +74,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: CreateReservationRequest = await req.json();
     const { instrumentName, slot, date, reserverName, reserverUserId } = body;
-    
+
     if (!instrumentName || !slot || !date || !reserverName || !reserverUserId) {
       const response: ApiResponse = {
         success: false,
@@ -83,12 +82,12 @@ export async function POST(req: NextRequest) {
       };
       return NextResponse.json(response, { status: 400 });
     }
-    
-    const existingReservation = await sql`
-      SELECT * FROM reservations 
-      WHERE instrumentname = ${instrumentName} AND slot = ${slot} AND date = ${date}
-    `;
-    
+
+    const existingReservation = await pool.query(
+      'SELECT * FROM reservations WHERE instrumentname = $1 AND slot = $2 AND date = $3',
+      [instrumentName, slot, date]
+    );
+
     if (existingReservation.rows.length > 0) {
       const response: ApiResponse = {
         success: false,
@@ -96,15 +95,16 @@ export async function POST(req: NextRequest) {
       };
       return NextResponse.json(response, { status: 409 });
     }
-    
+
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    
-    await sql`
-      INSERT INTO reservations (id, instrumentname, slot, date, reservername, reserveruserid, createdat, updatedat)
-      VALUES (${id}, ${instrumentName}, ${slot}, ${date}, ${reserverName}, ${reserverUserId}, ${now}, ${now})
-    `;
-    
+
+    await pool.query(
+      `INSERT INTO reservations (id, instrumentname, slot, date, reservername, reserveruserid, createdat, updatedat)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id, instrumentName, slot, date, reserverName, reserverUserId, now, now]
+    );
+
     const response: ApiResponse<Reservation> = {
       success: true,
       data: {
@@ -128,4 +128,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(response, { status: 500 });
   }
 }
-

@@ -15,10 +15,11 @@ import { toast } from 'sonner'
 import { Instrument } from '@/types'
 
 interface CreateInstrumentDialogProps {
+  teamSlug: string
   onInstrumentCreated?: () => void
 }
 
-export function CreateInstrumentDialog({ onInstrumentCreated }: CreateInstrumentDialogProps) {
+export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: CreateInstrumentDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState<Instrument>({
@@ -42,7 +43,7 @@ export function CreateInstrumentDialog({ onInstrumentCreated }: CreateInstrument
 
     setIsSaving(true)
     try {
-      await apiClient.createInstrument(formData)
+      await apiClient.createInstrument({ ...formData, team_slug: teamSlug })
       toast.success('Instrument created successfully')
       setIsOpen(false)
       setFormData({ name: '', os: '', group: '', ip: '' })

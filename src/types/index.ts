@@ -4,6 +4,14 @@ export interface Instrument {
   group?: string
   group_name?: string // Backend field name
   ip?: string
+  team_slug?: string
+}
+
+export interface Team {
+  slug: string
+  name: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Reservation {

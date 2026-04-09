@@ -1,8 +1,6 @@
-import { ApiResponse, CreateReservationRequest, Instrument, Reservation, ReservationsByInstrument } from '../types'
+import { ApiResponse, CreateReservationRequest, Instrument, Reservation, ReservationsByInstrument, Team } from '../types'
 
-// Use a relative URL for both local development and production.
-// This ensures that when running locally (e.g., via `vercel dev`), the app hits the local API.
-const API_BASE_URL = typeof window !== 'undefined' ? '' : 'https://instrument-checkout.vercel.app'
+const API_BASE_URL = ''
 
 class ApiClient {
   private baseUrl: string
@@ -13,7 +11,7 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
-    
+
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
@@ -25,7 +23,6 @@ class ApiClient {
     const data = await response.json()
 
     if (!response.ok) {
-      // If the response has an error message, use it; otherwise use the generic HTTP error
       const errorMessage = data.error || `HTTP error! status: ${response.status}`
       throw new Error(errorMessage)
     }
@@ -33,46 +30,84 @@ class ApiClient {
     return data
   }
 
-  async getInstruments(): Promise<Instrument[]> {
-    const response = await this.request<Instrument[]>('/api/instruments')
+  // Teams
+  async getTeams(): Promise<Team[]> {
+    const response = await this.request<Team[]>('/api/teams')
+    if (!response.success) throw new Error(response.error || 'Failed to fetch teams')
+    return response.data || []
+  }
+
+  async createTeam(name: string, slug: string, adminCredentials: string): Promise<Team> {
+    const response = await this.request<Team>('/api/teams', {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${btoa(adminCredentials)}` },
+      body: JSON.stringify({ name, slug }),
+    })
+    if (!response.success) throw new Error(response.error || 'Failed to create team')
+    return response.data!
+  }
+
+  async updateTeam(oldSlug: string, name: string, slug: string, adminCredentials: string): Promise<Team> {
+    const response = await this.request<Team>('/api/teams', {
+      method: 'PATCH',
+      headers: { 'Authorization': `Basic ${btoa(adminCredentials)}` },
+      body: JSON.stringify({ oldSlug, name, slug }),
+    })
+    if (!response.success) throw new Error(response.error || 'Failed to update team')
+    return response.data!
+  }
+
+  async deleteTeam(slug: string, adminCredentials: string): Promise<void> {
+    const response = await this.request('/api/teams', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Basic ${btoa(adminCredentials)}` },
+      body: JSON.stringify({ slug }),
+    })
+    if (!response.success) throw new Error(response.error || 'Failed to delete team')
+  }
+
+  // Instruments
+  async getInstruments(teamSlug?: string): Promise<Instrument[]> {
+    const endpoint = teamSlug
+      ? `/api/instruments?team=${encodeURIComponent(teamSlug)}`
+      : '/api/instruments'
+    const response = await this.request<Instrument[]>(endpoint)
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch instruments')
     }
-    
-    // Transform the data to handle backend field mapping
+
     const instruments = (response.data || []).map(instrument => ({
       name: instrument.name,
       os: instrument.os,
-      group: instrument.group || instrument.group_name, // Handle both field names
-      ip: instrument.ip
+      group: instrument.group || instrument.group_name,
+      ip: instrument.ip,
+      team_slug: instrument.team_slug
     }))
-    
+
     return instruments
   }
 
-  async getReservations(instrumentName?: string): Promise<ReservationsByInstrument> {
-    const endpoint = instrumentName 
-      ? `/api/reservations?instrumentName=${encodeURIComponent(instrumentName)}`
-      : '/api/reservations'
-    
+  // Reservations
+  async getReservations(teamSlug?: string, instrumentName?: string): Promise<ReservationsByInstrument> {
+    const params = new URLSearchParams()
+    if (teamSlug) params.set('team', teamSlug)
+    if (instrumentName) params.set('instrumentName', instrumentName)
+    const qs = params.toString()
+    const endpoint = qs ? `/api/reservations?${qs}` : '/api/reservations'
+
     const response = await this.request<ReservationsByInstrument>(endpoint)
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch reservations')
     }
-    
-    // Clean up malformed data from backend
+
     const cleanedData: ReservationsByInstrument = {}
     const rawData = response.data || {}
-    
+
     for (const [instrument, slots] of Object.entries(rawData)) {
-      // Skip entries with undefined instrument names
-      if (instrument === 'undefined') {
-        continue
-      }
-      
+      if (instrument === 'undefined') continue
+
       cleanedData[instrument] = {}
       for (const [slotKey, reservationInfo] of Object.entries(slots)) {
-        // Ensure reservation info has all required fields
         cleanedData[instrument][slotKey] = {
           reserverName: reservationInfo.reserverName || 'Unknown',
           reserverUserId: reservationInfo.reserverUserId || 'unknown',
@@ -80,7 +115,7 @@ class ApiClient {
         }
       }
     }
-    
+
     return cleanedData
   }
 
@@ -89,7 +124,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(reservation),
     })
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to create reservation')
     }
@@ -101,7 +136,7 @@ class ApiClient {
       method: 'DELETE',
       body: JSON.stringify({ reserverUserId }),
     })
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to delete reservation')
     }
@@ -112,7 +147,7 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify({ oldName, ...instrument }),
     })
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to update instrument')
     }
@@ -124,7 +159,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(instrument),
     })
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to create instrument')
     }
@@ -135,7 +170,7 @@ class ApiClient {
     const response = await this.request(`/api/instruments?name=${encodeURIComponent(name)}`, {
       method: 'DELETE',
     })
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to delete instrument')
     }
