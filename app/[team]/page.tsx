@@ -107,12 +107,7 @@ export default function TeamPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <Header teamName={team?.name} team={team} onTeamUpdated={() => {
-        apiClient.getTeams().then(teams => {
-          const found = teams.find(t => t.slug === teamSlug);
-          if (found) setTeam(found);
-        });
-      }} />
+      <Header teamName={team?.name} />
 
       <section className="py-16 px-6 mx-auto w-full">
         {isPending ? (
