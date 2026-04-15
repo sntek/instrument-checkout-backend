@@ -9,6 +9,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Plus, Loader2, X } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
@@ -106,13 +113,19 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">Operating System</label>
-            <input
-              name="os"
-              value={formData.os}
-              onChange={handleInputChange}
-              placeholder="e.g. Windows, Linux"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-            />
+            <Select
+              value={formData.os || ''}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, os: value === 'none' ? '' : value }))}
+            >
+              <SelectTrigger className="w-full bg-slate-800 border-slate-700 text-white focus:ring-cyan-500 focus:border-cyan-500">
+                <SelectValue placeholder="Select OS" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                <SelectItem value="none" className="text-slate-400 focus:bg-slate-700 focus:text-white">— None —</SelectItem>
+                <SelectItem value="Windows" className="focus:bg-slate-700 focus:text-white">Windows</SelectItem>
+                <SelectItem value="Linux" className="focus:bg-slate-700 focus:text-white">Linux</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">IP Address</label>
