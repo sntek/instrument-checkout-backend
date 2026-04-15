@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     const signInRes = await auth.api.signInEmail({
         body: { email, password: SSO_PASSWORD },
         asResponse: true,
+        headers: request.headers,
     });
 
     if (signInRes.ok) {
@@ -46,7 +47,19 @@ export async function POST(request: NextRequest) {
     const signUpRes = await auth.api.signUpEmail({
         body: { email, password: SSO_PASSWORD, name: fullName },
         asResponse: true,
+        headers: request.headers,
     });
+
+    if (signUpRes.status === 422) {
+        // User already exists but sign-in failed — try sign-in once more
+        // (can happen if a previous sign-up succeeded but cookie wasn't returned)
+        const retryRes = await auth.api.signInEmail({
+            body: { email, password: SSO_PASSWORD },
+            asResponse: true,
+            headers: request.headers,
+        });
+        return retryRes;
+    }
 
     return signUpRes;
 }
