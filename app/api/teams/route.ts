@@ -1,17 +1,6 @@
 import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'admin123';
-
-function isAdmin(req: NextRequest): boolean {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Basic ')) return false;
-  const decoded = atob(authHeader.slice(6));
-  const [user, pass] = decoded.split(':');
-  return user === ADMIN_USER && pass === ADMIN_PASS;
-}
-
 export async function GET() {
   try {
     const result = await pool.query('SELECT * FROM teams ORDER BY name');
@@ -23,10 +12,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const { name, slug } = await req.json();
 
@@ -55,10 +40,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdmin(req)) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const { oldSlug, name, slug } = await req.json();
 
@@ -98,10 +79,6 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isAdmin(req)) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const { slug } = await req.json();
 

@@ -16,8 +16,8 @@ export async function GET(req: NextRequest) {
     const instruments: Instrument[] = result.rows.map((row: any) => ({
       name: row.name,
       os: row.os,
-      group: row.group_name,
       ip: row.ip,
+      sources: row.sources ?? [],
       team_slug: row.team_slug
     }));
 
@@ -47,7 +47,7 @@ export async function OPTIONS() {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { oldName, name, os, group, ip } = body;
+    const { oldName, name, os, ip, sources } = body;
 
     if (!oldName) {
       return NextResponse.json({ success: false, error: 'Original instrument name is required' }, { status:400 });
@@ -59,10 +59,10 @@ export async function PATCH(request: Request) {
 
     const result = await pool.query(
       `UPDATE instruments
-       SET name = COALESCE($1, name), os = $2, group_name = $3, ip = $4, updatedAt = $5
+       SET name = COALESCE($1, name), os = $2, ip = $3, sources = $4, updatedAt = $5
        WHERE name = $6
        RETURNING *`,
-      [name, os, group, ip, new Date().toISOString(), oldName]
+      [name, os, ip, JSON.stringify(sources ?? []), new Date().toISOString(), oldName]
     );
 
     if (result.rowCount === 0) {
@@ -74,8 +74,8 @@ export async function PATCH(request: Request) {
       data: {
         name: result.rows[0].name,
         os: result.rows[0].os,
-        group: result.rows[0].group_name,
-        ip: result.rows[0].ip
+        ip: result.rows[0].ip,
+        sources: result.rows[0].sources ?? []
       }
     });
   } catch (error) {
@@ -87,7 +87,7 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, os, group, ip, team_slug } = body;
+    const { name, os, ip, sources, team_slug } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: 'Instrument name is required' }, { status: 400 });
@@ -98,10 +98,10 @@ export async function POST(request: Request) {
 
     const now = new Date().toISOString();
     const result = await pool.query(
-      `INSERT INTO instruments (name, os, group_name, ip, team_slug, createdAt, updatedAt)
+      `INSERT INTO instruments (name, os, ip, sources, team_slug, createdAt, updatedAt)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [name, os, group, ip, team_slug, now, now]
+      [name, os, ip, JSON.stringify(sources ?? []), team_slug, now, now]
     );
 
     return NextResponse.json({
@@ -109,8 +109,8 @@ export async function POST(request: Request) {
       data: {
         name: result.rows[0].name,
         os: result.rows[0].os,
-        group: result.rows[0].group_name,
-        ip: result.rows[0].ip
+        ip: result.rows[0].ip,
+        sources: result.rows[0].sources ?? []
       }
     }, { status: 201 });
   } catch (error) {

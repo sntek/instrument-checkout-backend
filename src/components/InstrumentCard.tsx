@@ -2,8 +2,8 @@
 import React, { useState } from 'react'
 import { Copyable } from '@/components/Copyable'
 import { InstrumentSchedulingDialog } from '@/components/InstrumentSchedulingDialog'
-import { Instrument } from '@/types'
-import { Edit2, Check, X, Loader2, Trash2 } from 'lucide-react'
+import { Instrument, Source } from '@/types'
+import { Edit2, Check, X, Loader2, Trash2, Plus } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -97,6 +97,30 @@ export function InstrumentCard({
     setTempInstrument(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleSourceChange = (index: number, field: keyof Source, value: string) => {
+    setTempInstrument(prev => {
+      const sources = [...(prev.sources ?? [])]
+      sources[index] = { ...sources[index], [field]: value }
+      return { ...prev, sources }
+    })
+  }
+
+  const handleAddSource = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setTempInstrument(prev => ({
+      ...prev,
+      sources: [...(prev.sources ?? []), { name: '', channel: '' }]
+    }))
+  }
+
+  const handleRemoveSource = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation()
+    setTempInstrument(prev => ({
+      ...prev,
+      sources: (prev.sources ?? []).filter((_, i) => i !== index)
+    }))
+  }
+
   return (
     <div
       key={instrument.name}
@@ -154,27 +178,15 @@ export function InstrumentCard({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-400 uppercase font-semibold">OS</label>
-              <input
-                name="os"
-                value={tempInstrument.os || ''}
-                onChange={handleInputChange}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 uppercase font-semibold">Group</label>
-              <input
-                name="group"
-                value={tempInstrument.group || ''}
-                onChange={handleInputChange}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
+          <div>
+            <label className="text-xs text-slate-400 uppercase font-semibold">OS</label>
+            <input
+              name="os"
+              value={tempInstrument.os || ''}
+              onChange={handleInputChange}
+              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
           <div>
             <label className="text-xs text-slate-400 uppercase font-semibold">IP Address</label>
@@ -186,6 +198,48 @@ export function InstrumentCard({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-slate-400 uppercase font-semibold">Sources</label>
+              <button
+                onClick={handleAddSource}
+                className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Add
+              </button>
+            </div>
+            {(tempInstrument.sources ?? []).length > 0 && (
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-[1fr_80px_20px] gap-1 text-xs text-slate-500 px-1">
+                  <span>Name</span><span>Channel</span><span />
+                </div>
+                {(tempInstrument.sources ?? []).map((src, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_80px_20px] gap-1 items-center">
+                    <input
+                      value={src.name}
+                      onChange={(e) => handleSourceChange(i, 'name', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="e.g. internal AFG"
+                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-sm focus:border-cyan-500 outline-none transition-colors"
+                    />
+                    <input
+                      value={src.channel}
+                      onChange={(e) => handleSourceChange(i, 'channel', e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="e.g. CH1"
+                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-sm focus:border-cyan-500 outline-none transition-colors"
+                    />
+                    <button
+                      onClick={(e) => handleRemoveSource(e, i)}
+                      className="text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -194,11 +248,31 @@ export function InstrumentCard({
           </h3>
           <div className="text-base md:text-lg text-gray-400 space-y-1.5">
             <p><span className="text-gray-300">OS:</span> {instrument.os ?? '—'}</p>
-            <p><span className="text-gray-300">Group:</span> {instrument.group ?? '—'}</p>
             <p>
               <span className="text-gray-300">IP:</span>{' '}
-              {instrument.ip ? <Copyable text={instrument.ip} label="Copy IP Address" /> : '—'}
+              {instrument.ip ? <Copyable text={instrument.ip} os={instrument.os} label="Copy IP Address" /> : '—'}
             </p>
+            {(instrument.sources ?? []).length > 0 && (
+              <div className="pt-1">
+                <p className="text-gray-300 mb-1">Sources:</p>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-slate-500 uppercase">
+                      <th className="text-left font-semibold pr-4 pb-0.5">Name</th>
+                      <th className="text-left font-semibold pb-0.5">Channel</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(instrument.sources ?? []).map((src, i) => (
+                      <tr key={i} className="text-gray-400">
+                        <td className="pr-4 py-0.5">{src.name || '—'}</td>
+                        <td className="py-0.5">{src.channel || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

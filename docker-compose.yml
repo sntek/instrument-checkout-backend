@@ -17,6 +17,22 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    image: postgres:16-alpine
+    restart: on-failure
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-instrument}
+    command: >
+      sh -c "for f in /migrations/*.sql; do
+        echo \"Running migration: $$f\";
+        psql -h db -U ${POSTGRES_USER:-instrument} -d ${POSTGRES_DB:-instrument_checkout} -f $$f;
+      done"
+    volumes:
+      - ./migrations:/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
   app:
     build: .
     restart: unless-stopped
@@ -32,6 +48,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   cron:
     build: .

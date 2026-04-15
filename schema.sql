@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS instruments (
   os TEXT,
   group_name TEXT,
   ip TEXT,
+  sources JSONB NOT NULL DEFAULT '[]'::jsonb,
   team_slug TEXT NOT NULL DEFAULT 'rocket-lab',
   createdAt TEXT NOT NULL,
   updatedAt TEXT NOT NULL

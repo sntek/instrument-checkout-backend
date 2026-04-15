@@ -17,27 +17,21 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { data: session, isPending } = authClient.useSession();
 
-  // Admin create team state
+  // Create team state
   const [showCreate, setShowCreate] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [teamSlug, setTeamSlug] = useState('');
   const [slugEdited, setSlugEdited] = useState(false);
-  const [adminUser, setAdminUser] = useState('');
-  const [adminPass, setAdminPass] = useState('');
   const [creating, setCreating] = useState(false);
 
   // Edit team state
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editName, setEditName] = useState('');
   const [editSlug, setEditSlug] = useState('');
-  const [editAdminUser, setEditAdminUser] = useState('');
-  const [editAdminPass, setEditAdminPass] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Delete team state
   const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
-  const [delAdminUser, setDelAdminUser] = useState('');
-  const [delAdminPass, setDelAdminPass] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -58,14 +52,12 @@ export default function Dashboard() {
     if (!teamName || !teamSlug) return;
     setCreating(true);
     try {
-      await apiClient.createTeam(teamName, teamSlug, `${adminUser}:${adminPass}`);
+      await apiClient.createTeam(teamName, teamSlug);
       toast.success('Team created');
       setShowCreate(false);
       setTeamName('');
       setTeamSlug('');
       setSlugEdited(false);
-      setAdminUser('');
-      setAdminPass('');
       const updated = await apiClient.getTeams();
       setTeams(updated);
     } catch (err: any) {
@@ -81,8 +73,6 @@ export default function Dashboard() {
     setEditingTeam(team);
     setEditName(team.name);
     setEditSlug(team.slug);
-    setEditAdminUser('');
-    setEditAdminPass('');
   }
 
   async function handleSaveEdit(e: React.FormEvent) {
@@ -90,7 +80,7 @@ export default function Dashboard() {
     if (!editingTeam) return;
     setSaving(true);
     try {
-      await apiClient.updateTeam(editingTeam.slug, editName, editSlug, `${editAdminUser}:${editAdminPass}`);
+      await apiClient.updateTeam(editingTeam.slug, editName, editSlug);
       toast.success('Team updated');
       setEditingTeam(null);
       const updated = await apiClient.getTeams();
@@ -106,8 +96,6 @@ export default function Dashboard() {
     e.preventDefault();
     e.stopPropagation();
     setDeletingTeam(team);
-    setDelAdminUser('');
-    setDelAdminPass('');
   }
 
   async function handleDelete(e: React.FormEvent) {
@@ -115,7 +103,7 @@ export default function Dashboard() {
     if (!deletingTeam) return;
     setDeleting(true);
     try {
-      await apiClient.deleteTeam(deletingTeam.slug, `${delAdminUser}:${delAdminPass}`);
+      await apiClient.deleteTeam(deletingTeam.slug);
       toast.success('Team deleted');
       setDeletingTeam(null);
       const updated = await apiClient.getTeams();
@@ -137,7 +125,7 @@ export default function Dashboard() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-start justify-center pt-[20vh]">
         <SignInRequired />
       </div>
     );
@@ -199,7 +187,7 @@ export default function Dashboard() {
             className="group relative bg-slate-800/30 backdrop-blur-sm border border-dashed border-slate-700 rounded-xl p-8 hover:border-cyan-500/50 transition-all duration-300 flex flex-col items-center justify-center min-h-[160px] cursor-pointer"
           >
             <Plus className="w-8 h-8 text-slate-600 group-hover:text-cyan-400 transition-colors" />
-            <p className="text-sm text-slate-500 mt-2 group-hover:text-slate-300 transition-colors">New Team (Admin)</p>
+            <p className="text-sm text-slate-500 mt-2 group-hover:text-slate-300 transition-colors">New Team</p>
           </button>
         </div>
       </section>
@@ -232,30 +220,6 @@ export default function Dashboard() {
                     pattern="[a-z0-9-]+"
                     className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white font-mono placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
                   />
-                </div>
-              </div>
-              <div className="border-t border-slate-800 pt-4">
-                <p className="text-xs text-slate-500 mb-3">Admin credentials required</p>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500 mb-1 block">Username</label>
-                    <input
-                      value={adminUser}
-                      onChange={e => setAdminUser(e.target.value)}
-                      required
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500 mb-1 block">Password</label>
-                    <input
-                      type="password"
-                      value={adminPass}
-                      onChange={e => setAdminPass(e.target.value)}
-                      required
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500 outline-none transition-colors"
-                    />
-                  </div>
                 </div>
               </div>
               <div className="flex gap-3 justify-end pt-2">
@@ -304,19 +268,6 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
-              <div className="border-t border-slate-800 pt-4">
-                <p className="text-xs text-slate-500 mb-3">Admin credentials required</p>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500 mb-1 block">Username</label>
-                    <input value={editAdminUser} onChange={e => setEditAdminUser(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500 mb-1 block">Password</label>
-                    <input type="password" value={editAdminPass} onChange={e => setEditAdminPass(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
-                  </div>
-                </div>
-              </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={() => setEditingTeam(null)} className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white text-sm rounded-lg transition-all">
@@ -338,19 +289,6 @@ export default function Dashboard() {
               This will permanently delete <span className="text-white font-semibold">{deletingTeam.name}</span> and all its instruments and reservations.
             </p>
             <form onSubmit={handleDelete} className="space-y-4">
-              <div className="border-t border-slate-800 pt-4">
-                <p className="text-xs text-slate-500 mb-3">Admin credentials required</p>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500 mb-1 block">Username</label>
-                    <input value={delAdminUser} onChange={e => setDelAdminUser(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-slate-500 mb-1 block">Password</label>
-                    <input type="password" value={delAdminPass} onChange={e => setDelAdminPass(e.target.value)} required className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none transition-colors" />
-                  </div>
-                </div>
-              </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={() => setDeletingTeam(null)} className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
                 <button type="submit" disabled={deleting} className="flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white text-sm rounded-lg transition-all">

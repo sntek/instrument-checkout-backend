@@ -18,7 +18,7 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3030
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
@@ -32,7 +32,7 @@ COPY --from=builder /app/cron.mjs ./cron.mjs
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 3030
 
 # Run the built-in standalone server
 CMD ["node", "server.js"]

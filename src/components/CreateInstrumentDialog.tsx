@@ -9,10 +9,10 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, X } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
-import { Instrument } from '@/types'
+import { Instrument, Source } from '@/types'
 
 interface CreateInstrumentDialogProps {
   teamSlug: string
@@ -25,13 +25,35 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
   const [formData, setFormData] = useState<Instrument>({
     name: '',
     os: '',
-    group: '',
     ip: '',
+    sources: [],
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSourceChange = (index: number, field: keyof Source, value: string) => {
+    setFormData(prev => {
+      const sources = [...(prev.sources ?? [])]
+      sources[index] = { ...sources[index], [field]: value }
+      return { ...prev, sources }
+    })
+  }
+
+  const handleAddSource = () => {
+    setFormData(prev => ({
+      ...prev,
+      sources: [...(prev.sources ?? []), { name: '', channel: '' }]
+    }))
+  }
+
+  const handleRemoveSource = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      sources: (prev.sources ?? []).filter((_, i) => i !== index)
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +68,7 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
       await apiClient.createInstrument({ ...formData, team_slug: teamSlug })
       toast.success('Instrument created successfully')
       setIsOpen(false)
-      setFormData({ name: '', os: '', group: '', ip: '' })
+      setFormData({ name: '', os: '', ip: '', sources: [] })
       if (onInstrumentCreated) onInstrumentCreated()
     } catch (error) {
       console.error('Failed to create instrument:', error)
@@ -82,27 +104,15 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Operating System</label>
-              <input
-                name="os"
-                value={formData.os}
-                onChange={handleInputChange}
-                placeholder="e.g. Windows, Linux"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Group</label>
-              <input
-                name="group"
-                value={formData.group}
-                onChange={handleInputChange}
-                placeholder="e.g. G8"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-              />
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">Operating System</label>
+            <input
+              name="os"
+              value={formData.os}
+              onChange={handleInputChange}
+              placeholder="e.g. Windows, Linux"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-300">IP Address</label>
@@ -113,6 +123,48 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
               placeholder="e.g. 10.233.65.193"
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
             />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-300">Sources</label>
+              <button
+                type="button"
+                onClick={handleAddSource}
+                className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Add source
+              </button>
+            </div>
+            {(formData.sources ?? []).length > 0 && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_100px_24px] gap-2 text-xs text-slate-500 px-1">
+                  <span>Name</span><span>Channel</span><span />
+                </div>
+                {(formData.sources ?? []).map((src, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_100px_24px] gap-2 items-center">
+                    <input
+                      value={src.name}
+                      onChange={(e) => handleSourceChange(i, 'name', e.target.value)}
+                      placeholder="e.g. internal AFG"
+                      className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                    />
+                    <input
+                      value={src.channel}
+                      onChange={(e) => handleSourceChange(i, 'channel', e.target.value)}
+                      placeholder="e.g. CH1"
+                      className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSource(i)}
+                      className="text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <DialogFooter className="pt-4">
             <button

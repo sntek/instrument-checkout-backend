@@ -37,30 +37,27 @@ class ApiClient {
     return response.data || []
   }
 
-  async createTeam(name: string, slug: string, adminCredentials: string): Promise<Team> {
+  async createTeam(name: string, slug: string): Promise<Team> {
     const response = await this.request<Team>('/api/teams', {
       method: 'POST',
-      headers: { 'Authorization': `Basic ${btoa(adminCredentials)}` },
       body: JSON.stringify({ name, slug }),
     })
     if (!response.success) throw new Error(response.error || 'Failed to create team')
     return response.data!
   }
 
-  async updateTeam(oldSlug: string, name: string, slug: string, adminCredentials: string): Promise<Team> {
+  async updateTeam(oldSlug: string, name: string, slug: string): Promise<Team> {
     const response = await this.request<Team>('/api/teams', {
       method: 'PATCH',
-      headers: { 'Authorization': `Basic ${btoa(adminCredentials)}` },
       body: JSON.stringify({ oldSlug, name, slug }),
     })
     if (!response.success) throw new Error(response.error || 'Failed to update team')
     return response.data!
   }
 
-  async deleteTeam(slug: string, adminCredentials: string): Promise<void> {
+  async deleteTeam(slug: string): Promise<void> {
     const response = await this.request('/api/teams', {
       method: 'DELETE',
-      headers: { 'Authorization': `Basic ${btoa(adminCredentials)}` },
       body: JSON.stringify({ slug }),
     })
     if (!response.success) throw new Error(response.error || 'Failed to delete team')
@@ -79,8 +76,8 @@ class ApiClient {
     const instruments = (response.data || []).map(instrument => ({
       name: instrument.name,
       os: instrument.os,
-      group: instrument.group || instrument.group_name,
       ip: instrument.ip,
+      sources: instrument.sources ?? [],
       team_slug: instrument.team_slug
     }))
 

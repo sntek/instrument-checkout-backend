@@ -89,7 +89,7 @@ export function InstrumentSchedulingDialog({
                     aria-label={reserved ? `${slot} — Reserved${reserver ? ` by ${reserver}` : ''}` : `${slot} — Free`}
                   />
                 </TooltipTrigger>
-                <TooltipContent side="top">
+                <TooltipContent side="bottom">
                   <span className="font-medium">{slot}</span>
                   <span className="ml-2 opacity-80">{reserved ? (reserver ? `Reserved by ${reserver}` : 'Reserved') : 'Free'}</span>
                 </TooltipContent>
@@ -177,7 +177,7 @@ export function InstrumentSchedulingDialog({
                           )}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top">
+                      <TooltipContent side="bottom">
                         <span className="font-medium">{slot}</span>
                         <span className="ml-2 opacity-80">{selected ? (reserver ? (isMine ? 'Reserved by you' : `Reserved by ${reserver}`) : 'Reserved') : 'Free'}</span>
                       </TooltipContent>
@@ -239,7 +239,7 @@ export function InstrumentSchedulingDialog({
                           )}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top">
+                      <TooltipContent side="bottom">
                         <span className="font-medium">{slot}</span>
                         <span className="ml-2 opacity-80">{selected ? (reserver ? (isMine ? 'Reserved by you' : `Reserved by ${reserver}`) : 'Reserved') : 'Free'}</span>
                       </TooltipContent>

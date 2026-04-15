@@ -1,9 +1,13 @@
+export interface Source {
+  name: string
+  channel: string
+}
+
 export interface Instrument {
   name: string
   os?: string
-  group?: string
-  group_name?: string // Backend field name
   ip?: string
+  sources?: Source[]
   team_slug?: string
 }
 
