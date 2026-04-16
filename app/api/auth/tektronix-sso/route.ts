@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth";
+import { auth, pool } from "@/lib/auth";
+import { hashPassword } from "better-auth/crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 // This password is never exposed to users — it's derived server-side only.
@@ -12,6 +13,31 @@ function parseName(email: string): { firstName: string; lastName: string; fullNa
     const firstName = capitalize(parts[0] ?? "");
     const lastName = capitalize(parts[1] ?? "");
     return { firstName, lastName, fullName: `${firstName} ${lastName}`.trim() };
+}
+
+async function credentialAccountExists(email: string): Promise<boolean> {
+    const res = await pool.query(
+        `SELECT 1 FROM account
+         JOIN "user" ON account."userId" = "user".id
+         WHERE "user".email = $1
+           AND account."providerId" = 'credential'
+         LIMIT 1`,
+        [email]
+    );
+    return res.rowCount !== null && res.rowCount > 0;
+}
+
+async function resetSsoPassword(email: string): Promise<void> {
+    const hashed = await hashPassword(SSO_PASSWORD);
+    await pool.query(
+        `UPDATE account
+         SET password = $1, "updatedAt" = NOW()
+         FROM "user"
+         WHERE account."userId" = "user".id
+           AND "user".email = $2
+           AND account."providerId" = 'credential'`,
+        [hashed, email]
+    );
 }
 
 export async function POST(request: NextRequest) {
@@ -32,27 +58,23 @@ export async function POST(request: NextRequest) {
 
     const { fullName } = parseName(email);
 
-    // Try signing in first (user already exists)
+    // Fast path: try signing in directly (the common case for returning users).
     const signInRes = await auth.api.signInEmail({
         body: { email, password: SSO_PASSWORD },
         asResponse: true,
         headers: request.headers,
     });
 
-    if (signInRes.ok) {
-        return signInRes;
-    }
+    if (signInRes.ok) return signInRes;
 
-    // User doesn't exist yet — create them and sign in
-    const signUpRes = await auth.api.signUpEmail({
-        body: { email, password: SSO_PASSWORD, name: fullName },
-        asResponse: true,
-        headers: request.headers,
-    });
+    // Sign-in failed. better-auth returns 401 for both "wrong password" and "user not found",
+    // so query the DB to tell them apart.
+    const exists = await credentialAccountExists(email);
 
-    if (signUpRes.status === 422) {
-        // User already exists but sign-in failed — try sign-in once more
-        // (can happen if a previous sign-up succeeded but cookie wasn't returned)
+    if (exists) {
+        // Account exists but password doesn't match — legacy account with a different password.
+        // Reset it to the current SSO secret and sign in.
+        await resetSsoPassword(email);
         const retryRes = await auth.api.signInEmail({
             body: { email, password: SSO_PASSWORD },
             asResponse: true,
@@ -61,5 +83,11 @@ export async function POST(request: NextRequest) {
         return retryRes;
     }
 
+    // New user — create their account. signUpEmail also signs them in.
+    const signUpRes = await auth.api.signUpEmail({
+        body: { email, password: SSO_PASSWORD, name: fullName },
+        asResponse: true,
+        headers: request.headers,
+    });
     return signUpRes;
 }
