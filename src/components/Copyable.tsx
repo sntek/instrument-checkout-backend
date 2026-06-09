@@ -5,11 +5,13 @@ interface CopyableProps {
   text: string
   label?: string
   os?: string
+  instrumentName?: string
 }
 
 export function Copyable(props: CopyableProps) {
-  const { text, os, label = 'Copy' } = props
+  const { text, os, instrumentName, label = 'Copy' } = props
   const [copied, setCopied] = React.useState(false)
+  const isMSO2 = instrumentName?.startsWith('MSO2')
 
   async function handleCopy(e: React.MouseEvent) {
     e.stopPropagation()
@@ -53,7 +55,7 @@ export function Copyable(props: CopyableProps) {
           {copied ? 'Copied!' : label}
         </span>
       </span>
-      {os === 'Linux' && (
+      {os === 'Linux' && !isMSO2 && (
         <>
           <span className="text-slate-600 select-none">|</span>
           <a

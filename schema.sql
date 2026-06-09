@@ -87,6 +87,8 @@ CREATE TABLE IF NOT EXISTS instruments (
   ip TEXT,
   sources JSONB NOT NULL DEFAULT '[]'::jsonb,
   team_slug TEXT NOT NULL DEFAULT 'rocket-lab',
+  long_term_checkout_user_id TEXT,
+  long_term_checkout_user_name TEXT,
   createdAt TEXT NOT NULL,
   updatedAt TEXT NOT NULL
 );

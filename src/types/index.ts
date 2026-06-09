@@ -9,6 +9,8 @@ export interface Instrument {
   ip?: string
   sources?: Source[]
   team_slug?: string
+  long_term_checkout_user_id?: string
+  long_term_checkout_user_name?: string
 }
 
 export interface Team {

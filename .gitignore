@@ -43,6 +43,3 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 .vercel
-
-# clerk configuration (can include secrets)
-/.clerk/

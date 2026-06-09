@@ -22,9 +22,14 @@ export default function TeamPage() {
   const [notFound, setNotFound] = React.useState(false);
 
   const { data: session, isPending } = authClient.useSession();
+  
+  // DEV MODE: Mock session to bypass auth
+  const devSession = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true'
+    ? { user: { id: 'dev-user', email: 'dev@tektronix.com', name: 'Dev User' }, session: { id: 'dev-session' } }
+    : session;
 
-  const currentDisplayName = session?.user?.name || "Guest";
-  const currentUserId = session?.user?.id || "guest-user";
+  const currentDisplayName = devSession?.user?.name || "Guest";
+  const currentUserId = devSession?.user?.id || "guest-user";
 
   const {
     reservations,
@@ -114,7 +119,7 @@ export default function TeamPage() {
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
           </div>
-        ) : !session ? (
+        ) : !devSession ? (
           <SignInRequired />
         ) : instruments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -142,7 +147,7 @@ export default function TeamPage() {
         )}
       </section>
 
-      {session && (
+      {devSession && (
         <div className="fixed bottom-6 right-6 z-40">
           <CreateInstrumentDialog teamSlug={teamSlug} onInstrumentCreated={fetchInstruments} />
         </div>

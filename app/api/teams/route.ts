@@ -1,7 +1,14 @@
 import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { MOCK_TEAMS } from '@/lib/mock-data';
+
+const DEV_BYPASS = process.env.NODE_ENV === 'development' && (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true' || process.env.BYPASS_AUTH === 'true');
 
 export async function GET() {
+  if (DEV_BYPASS) {
+    return NextResponse.json({ success: true, data: MOCK_TEAMS });
+  }
+  
   try {
     const result = await pool.query('SELECT * FROM teams ORDER BY name');
     return NextResponse.json({ success: true, data: result.rows });
@@ -21,6 +28,13 @@ export async function POST(req: NextRequest) {
 
     if (!/^[a-z0-9-]+$/.test(slug)) {
       return NextResponse.json({ success: false, error: 'Slug must be lowercase alphanumeric with hyphens only' }, { status: 400 });
+    }
+
+    if (DEV_BYPASS) {
+      const now = new Date().toISOString();
+      const mockTeam = { slug, name, createdAt: now, updatedAt: now };
+      MOCK_TEAMS.push(mockTeam);
+      return NextResponse.json({ success: true, data: mockTeam }, { status: 201 });
     }
 
     const now = new Date().toISOString();
@@ -49,6 +63,16 @@ export async function PATCH(req: NextRequest) {
 
     if (slug && !/^[a-z0-9-]+$/.test(slug)) {
       return NextResponse.json({ success: false, error: 'Slug must be lowercase alphanumeric with hyphens only' }, { status: 400 });
+    }
+
+    if (DEV_BYPASS) {
+      const teamIndex = MOCK_TEAMS.findIndex(t => t.slug === oldSlug);
+      if (teamIndex === -1) {
+        return NextResponse.json({ success: false, error: 'Team not found' }, { status: 404 });
+      }
+      const now = new Date().toISOString();
+      MOCK_TEAMS[teamIndex] = { ...MOCK_TEAMS[teamIndex], name: name || MOCK_TEAMS[teamIndex].name, slug: slug || MOCK_TEAMS[teamIndex].slug, updatedAt: now };
+      return NextResponse.json({ success: true, data: MOCK_TEAMS[teamIndex] });
     }
 
     const now = new Date().toISOString();
@@ -84,6 +108,15 @@ export async function DELETE(req: NextRequest) {
 
     if (!slug) {
       return NextResponse.json({ success: false, error: 'Slug is required' }, { status: 400 });
+    }
+
+    if (DEV_BYPASS) {
+      const teamIndex = MOCK_TEAMS.findIndex(t => t.slug === slug);
+      if (teamIndex === -1) {
+        return NextResponse.json({ success: false, error: 'Team not found' }, { status: 404 });
+      }
+      MOCK_TEAMS.splice(teamIndex, 1);
+      return NextResponse.json({ success: true, message: 'Team deleted' });
     }
 
     // Delete all reservations for this team's instruments, then instruments, then team

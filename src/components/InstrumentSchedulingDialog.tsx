@@ -7,12 +7,18 @@ import {
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { generateTimeSlotsForDate, formatDate } from '@/lib/utils'
+import { apiClient } from '@/lib/api'
+import { toast } from 'sonner'
+import { Lock, LockOpen } from 'lucide-react'
+import { useState } from 'react'
 
 interface Instrument {
   name: string
   os?: string
   group?: string
   ip?: string
+  long_term_checkout_user_id?: string
+  long_term_checkout_user_name?: string
 }
 
 interface ReservationInfo {
@@ -31,6 +37,7 @@ interface InstrumentSchedulingDialogProps {
   onToggleSlot: (instrumentName: string, slot: string, date: string) => void
   onIsSlotReserved: (instrumentName: string, slot: string, date: string) => boolean
   onIsOptimisticallyUpdating: (instrumentName: string, slot: string, date: string) => boolean
+  onUpdate?: () => void
 }
 
 export function InstrumentSchedulingDialog({
@@ -43,7 +50,31 @@ export function InstrumentSchedulingDialog({
   onToggleSlot,
   onIsSlotReserved,
   onIsOptimisticallyUpdating,
+  onUpdate,
 }: InstrumentSchedulingDialogProps) {
+  const [isTogglingLongTerm, setIsTogglingLongTerm] = useState(false)
+  
+  const isLongTermCheckedOut = Boolean(instrument.long_term_checkout_user_id)
+  const isMyLongTermCheckout = instrument.long_term_checkout_user_id === currentUserId
+  
+  const handleToggleLongTermCheckout = async () => {
+    setIsTogglingLongTerm(true)
+    try {
+      if (isLongTermCheckedOut) {
+        await apiClient.toggleLongTermCheckout(instrument.name, null, null)
+        toast.success('Long-term checkout released')
+      } else {
+        await apiClient.toggleLongTermCheckout(instrument.name, currentUserId, currentDisplayName)
+        toast.success('Long-term checkout activated')
+      }
+      if (onUpdate) onUpdate()
+    } catch (error) {
+      console.error('Failed to toggle long-term checkout:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to toggle long-term checkout')
+    } finally {
+      setIsTogglingLongTerm(false)
+    }
+  }
   const today = new Date()
   const tomorrow = new Date(today)
   
@@ -266,6 +297,38 @@ export function InstrumentSchedulingDialog({
               </span>
             </div>
             <div className="text-[11px] text-muted-foreground">Click segments to toggle</div>
+          </div>
+          
+          <div className="pt-4 border-t border-slate-200">
+            <div className="flex items-start gap-4">
+              <button
+                onClick={handleToggleLongTermCheckout}
+                disabled={isTogglingLongTerm || (isLongTermCheckedOut && !isMyLongTermCheckout)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                  isLongTermCheckedOut
+                    ? isMyLongTermCheckout
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                } disabled:opacity-50`}
+              >
+                {isLongTermCheckedOut ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
+                {isTogglingLongTerm ? 'Processing...' : isLongTermCheckedOut ? 'Release Long-term Checkout' : 'Long-term Checkout'}
+              </button>
+              <div className="flex-1 text-sm text-slate-600">
+                {isLongTermCheckedOut ? (
+                  <div>
+                    <p className="font-medium text-slate-900">Currently checked out by {instrument.long_term_checkout_user_name}</p>
+                    <p className="text-xs mt-1">This instrument will remain checked out until {isMyLongTermCheckout ? 'you release' : 'they release'} it.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-medium text-slate-900">Enable long-term checkout</p>
+                    <p className="text-xs mt-1">The instrument will remain checked out until you manually release it.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>

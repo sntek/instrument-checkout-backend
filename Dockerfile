@@ -28,6 +28,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/schema.sql ./schema.sql
+COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/cron.mjs ./cron.mjs
 
 USER nextjs

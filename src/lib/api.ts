@@ -78,7 +78,9 @@ class ApiClient {
       os: instrument.os,
       ip: instrument.ip,
       sources: instrument.sources ?? [],
-      team_slug: instrument.team_slug
+      team_slug: instrument.team_slug,
+      long_term_checkout_user_id: instrument.long_term_checkout_user_id,
+      long_term_checkout_user_name: instrument.long_term_checkout_user_name
     }))
 
     return instruments
@@ -171,6 +173,22 @@ class ApiClient {
     if (!response.success) {
       throw new Error(response.error || 'Failed to delete instrument')
     }
+  }
+
+  async toggleLongTermCheckout(instrumentName: string, userId: string | null, userName: string | null): Promise<Instrument> {
+    const response = await this.request<Instrument>('/api/instruments', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        oldName: instrumentName,
+        long_term_checkout_user_id: userId,
+        long_term_checkout_user_name: userName,
+      }),
+    })
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to toggle long-term checkout')
+    }
+    return response.data!
   }
 }
 

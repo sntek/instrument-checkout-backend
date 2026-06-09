@@ -16,6 +16,11 @@ export default function Dashboard() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const { data: session, isPending } = authClient.useSession();
+  
+  // DEV MODE: Mock session to bypass auth
+  const devSession = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true'
+    ? { user: { id: 'dev-user', email: 'dev@tektronix.com', name: 'Dev User' }, session: { id: 'dev-session' } }
+    : session;
 
   // Create team state
   const [showCreate, setShowCreate] = useState(false);
@@ -123,7 +128,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!session) {
+  if (!devSession) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-start justify-center pt-[20vh]">
         <SignInRequired />

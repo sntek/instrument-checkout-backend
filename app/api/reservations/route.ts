@@ -1,8 +1,27 @@
 import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { Reservation, CreateReservationRequest, ApiResponse, ReservationsByInstrument } from '@/types';
+import { MOCK_RESERVATIONS } from '@/lib/mock-data';
+
+const DEV_BYPASS = process.env.NODE_ENV === 'development' && (process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true' || process.env.BYPASS_AUTH === 'true');
 
 export async function GET(req: NextRequest) {
+  if (DEV_BYPASS) {
+    const reservationsByInstrument: ReservationsByInstrument = {};
+    MOCK_RESERVATIONS.forEach(reservation => {
+      if (!reservationsByInstrument[reservation.instrumentName]) {
+        reservationsByInstrument[reservation.instrumentName] = {};
+      }
+      const slotKey = `${reservation.date}-${reservation.slot}`;
+      reservationsByInstrument[reservation.instrumentName][slotKey] = {
+        id: reservation.id,
+        reserverName: reservation.reserverName,
+        reserverUserId: reservation.reserverUserId
+      };
+    });
+    return NextResponse.json({ success: true, data: reservationsByInstrument });
+  }
+  
   try {
     const { searchParams } = new URL(req.url);
     const instrumentName = searchParams.get('instrumentName');
@@ -81,6 +100,18 @@ export async function POST(req: NextRequest) {
         error: 'Missing required fields: instrumentName, slot, date, reserverName, reserverUserId'
       };
       return NextResponse.json(response, { status: 400 });
+    }
+
+    if (DEV_BYPASS) {
+      const existing = MOCK_RESERVATIONS.find(r => r.instrumentName === instrumentName && r.slot === slot && r.date === date);
+      if (existing) {
+        return NextResponse.json({ success: false, error: 'Slot is already reserved' }, { status: 409 });
+      }
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const mockReservation: Reservation = { id, instrumentName, slot, date, reserverName, reserverUserId, createdAt: now, updatedAt: now };
+      MOCK_RESERVATIONS.push(mockReservation);
+      return NextResponse.json({ success: true, data: mockReservation }, { status: 201 });
     }
 
     const existingReservation = await pool.query(

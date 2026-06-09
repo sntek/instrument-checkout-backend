@@ -89,9 +89,27 @@ The daily reservation rollover is configured to run at midnight UTC (`0 0 * * *`
 ## Development
 
 ### Local Development
+
+#### Option 1: With Docker (Full Stack)
+```bash
+docker-compose up
+```
+
+#### Option 2: Without Docker (Frontend Only - Bypass Auth)
+To develop the frontend without starting Docker/PostgreSQL:
+
+1. Create a `.env.local` file (or update existing):
+```bash
+BYPASS_AUTH=true
+NEXT_PUBLIC_BYPASS_AUTH=true
+```
+
+2. Start the dev server:
 ```bash
 npm run dev
 ```
+
+This will bypass the authentication screen and use a mock user session. All API operations (teams, instruments, reservations) will work with in-memory storage. **Note**: Data is not persisted and resets on server restart.
 
 ### Build
 ```bash

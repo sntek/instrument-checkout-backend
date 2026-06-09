@@ -184,12 +184,33 @@ export function InstrumentCard({
     setSourcesTemp(prev => prev.filter((_, i) => i !== index))
   }
 
+  const isLongTermCheckedOut = Boolean(instrument.long_term_checkout_user_id)
+  const isMyLongTermCheckout = instrument.long_term_checkout_user_id === currentUserId
+
   return (
     <div
       key={instrument.name}
       className="relative bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-7 md:p-8 pb-10 min-h-52 md:min-h-60 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 group"
       onClick={() => !isEditing && onOpenChange(true)}
     >
+      {isLongTermCheckedOut && (
+        <div className="absolute inset-0 bg-purple-900/30 backdrop-blur-[2px] rounded-xl border-2 border-purple-500/50 flex items-center justify-center z-10 pointer-events-none">
+          <div className="bg-purple-900/90 backdrop-blur-sm px-6 py-4 rounded-lg border border-purple-400/50 shadow-2xl">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <span className="text-2xl">🔒</span>
+              </div>
+              <div>
+                <p className="text-white font-semibold text-lg">Long-term Checkout</p>
+                <p className="text-purple-200 text-sm">Checked out by {instrument.long_term_checkout_user_name}</p>
+              </div>
+            </div>
+            <p className="text-purple-300 text-xs mt-2 max-w-xs">
+              This instrument will remain checked out until {isMyLongTermCheckout ? 'you release' : 'the user releases'} it.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
         {isEditing ? (
           <>
@@ -282,14 +303,14 @@ export function InstrumentCard({
         </div>
       ) : (
         <>
-          <h3 className="text-xl md:text-2xl font-semibold text-white mb-5 overflow-visible flex items-center gap-3">
+          <h3 className="text-lg lg:text-base xl:text-xl 2xl:text-2xl font-semibold text-white mb-5 overflow-visible flex items-center gap-3 break-all">
             <OsIcon os={instrument.os} className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
             <Copyable text={instrument.name} label="Copy device name" />
           </h3>
           <div className="space-y-3.5">
             <p className="text-lg text-slate-400">
               <span className="text-slate-500 mr-2">IP</span>
-              {instrument.ip ? <Copyable text={instrument.ip} os={instrument.os} label="Copy IP Address" /> : <span className="text-slate-600">—</span>}
+              {instrument.ip ? <Copyable text={instrument.ip} os={instrument.os} instrumentName={instrument.name} label="Copy IP Address" /> : <span className="text-slate-600">—</span>}
             </p>
             <button
               onClick={(e) => openSourcesModal(e, false)}
@@ -318,6 +339,7 @@ export function InstrumentCard({
           onToggleSlot={onToggleSlot}
           onIsSlotReserved={onIsSlotReserved}
           onIsOptimisticallyUpdating={onIsOptimisticallyUpdating}
+          onUpdate={onUpdate}
         />
       )}
 
