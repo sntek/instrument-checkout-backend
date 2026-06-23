@@ -120,9 +120,9 @@ export function UserMenu() {
               <button
                 onClick={startEditingName}
                 title="Edit preferred name"
-                className="shrink-0 mt-0.5 text-slate-500 hover:text-slate-200 transition-colors"
+                className="shrink-0 mt-0.5 p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
                 </svg>
               </button>

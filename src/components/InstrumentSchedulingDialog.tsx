@@ -3,7 +3,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { generateTimeSlotsForDate, formatDate } from '@/lib/utils'
@@ -93,24 +92,31 @@ export function InstrumentSchedulingDialog({
   return (
     <>
       <div className="absolute left-0 right-0 bottom-0 px-2 py-2 rounded-b-xl bg-gradient-to-t from-slate-900/20 to-transparent">
+        {isLongTermCheckedOut && (
+          <div className="absolute inset-0 bg-purple-900/70 backdrop-blur-[2px] rounded-b-xl flex items-center justify-center z-10 pointer-events-none">
+            <span className="text-purple-200 text-xs font-semibold tracking-wide">🔒 Long-term checkout — {instrument.long_term_checkout_user_name}</span>
+          </div>
+        )}
         <div className="flex w-full items-end gap-1 justify-center">
           {todaySlots.map((slot) => {
             const reserved = onIsSlotReserved(instrument.name, slot, todayDateString)
             const reservationInfo = reservationsByInstrument[instrument.name]?.[`${todayDateString}-${slot}`]
             const reserver = reservationInfo?.reserverName
+            const isBlockedByOther = reserved && reservationInfo?.reserverUserId !== currentUserId
             return (
               <Tooltip key={slot}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`h-9 sm:h-10 md:h-12 flex-1 rounded-full transition-transform ${reserved ? 'bg-red-500' : 'bg-emerald-500'} hover:scale-110`}
-                    role="button"
-                    tabIndex={0}
+                    className={`h-9 sm:h-10 md:h-12 flex-1 rounded-full transition-transform ${reserved ? 'bg-red-500' : 'bg-emerald-500'} ${isBlockedByOther ? 'cursor-not-allowed opacity-80' : 'hover:scale-110 cursor-pointer'}`}
+                    role={isBlockedByOther ? 'img' : 'button'}
+                    tabIndex={isBlockedByOther ? -1 : 0}
                     onClick={(e) => {
                       e.stopPropagation()
                       e.preventDefault()
-                      onToggleSlot(instrument.name, slot, todayDateString)
+                      if (!isBlockedByOther) onToggleSlot(instrument.name, slot, todayDateString)
                     }}
                     onKeyDown={(e) => {
+                      if (isBlockedByOther) return
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         e.stopPropagation()
@@ -127,30 +133,10 @@ export function InstrumentSchedulingDialog({
               </Tooltip>
             )
           })}
-          <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogTrigger asChild>
-              <button
-                className="h-9 sm:h-10 md:h-12 w-9 sm:w-10 md:w-8 rounded-full bg-slate-700/60 hover:bg-slate-600/80 border border-slate-600/60 hover:border-slate-500/80 transition-all duration-200 flex items-center justify-center group"
-                aria-label="Open scheduling dialog"
-                title="Open scheduling dialog"
-              >
-                <svg
-                  className="w-4 h-4 sm:w-5 sm:h-5 text-slate-300 group-hover:text-white transition-colors"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </button>
-            </DialogTrigger>
-      <DialogContent className="sm:max-w-6xl">
+        </div>
+      </div>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-6xl" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>
             {instrument.name} — Select Time Slots
@@ -159,10 +145,42 @@ export function InstrumentSchedulingDialog({
         <div className="mt-4 space-y-8">
           {/* Today Timeline */}
           <div>
-            <h3 className="text-lg font-semibold text-black mb-3">
-              {formatDate(today)} (Today)
-            </h3>
-            <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-black">
+                {formatDate(today)} (Today)
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    todaySlots.forEach(slot => {
+                      const reservationInfo = reservationsByInstrument[instrument.name]?.[`${todayDateString}-${slot}`]
+                      if (!reservationInfo) {
+                        onToggleSlot(instrument.name, slot, todayDateString)
+                      }
+                    })
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white font-medium transition-colors"
+                >
+                  Reserve Full Day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    todaySlots.forEach(slot => {
+                      const reservationInfo = reservationsByInstrument[instrument.name]?.[`${todayDateString}-${slot}`]
+                      if (reservationInfo?.reserverUserId === currentUserId) {
+                        onToggleSlot(instrument.name, slot, todayDateString)
+                      }
+                    })
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-md bg-slate-500 hover:bg-slate-600 text-white font-medium transition-colors"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-700 mb-2">
               <span className="tabular-nums">8:00 AM</span>
               <span className="tabular-nums">12:00 PM</span>
               <span className="tabular-nums">5:00 PM</span>
@@ -188,24 +206,22 @@ export function InstrumentSchedulingDialog({
                   const reserver = reservationInfo?.reserverName
                   const isMine = reservationInfo?.reserverUserId === currentUserId
                   const isOptimisticallyUpdating = onIsOptimisticallyUpdating(instrument.name, slot, todayDateString)
+                  const isBlockedByOther = selected && !isMine
                   return (
                     <Tooltip key={slot}>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          onClick={() => onToggleSlot(instrument.name, slot, todayDateString)}
-                          className={`flex-1 relative rounded-md outline-none transition-[transform,box-shadow] focus-visible:ring-2 focus-visible:ring-cyan-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${isOptimisticallyUpdating ? 'animate-pulse' : ''}`}
-                          aria-label={`Toggle ${slot}${reserver ? ` (reserved by ${reserver})` : ''}`}
+                          onClick={() => { if (!isBlockedByOther) onToggleSlot(instrument.name, slot, todayDateString) }}
+                          className={`flex-1 relative rounded-md outline-none transition-[transform,box-shadow] focus-visible:ring-2 focus-visible:ring-cyan-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${isOptimisticallyUpdating ? 'animate-pulse' : ''} ${isBlockedByOther ? 'cursor-not-allowed' : ''}`}
+                          aria-label={`${slot}${reserver ? ` — reserved by ${reserver}` : selected ? ' — reserved' : ' — free'}`}
+                          aria-disabled={isBlockedByOther}
                           disabled={isOptimisticallyUpdating}
                         >
                           <span
                             className={`absolute inset-0 rounded-md ${selected ? (isMine ? 'bg-cyan-500/90' : 'bg-rose-500/80') : 'bg-slate-800/0 hover:bg-slate-700/40'} shadow ${selected ? 'shadow-cyan-500/10' : 'shadow-none'} ${isOptimisticallyUpdating ? 'opacity-70' : ''}`}
                           />
-                          {isOptimisticallyUpdating && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" />
-                            </div>
-                          )}
+
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
@@ -221,10 +237,42 @@ export function InstrumentSchedulingDialog({
 
           {/* Tomorrow Timeline */}
           <div>
-             <h3 className="text-lg font-semibold text-black mb-3">
-               {formatDate(tomorrow)} {today.getDay() === 5 ? '(Monday)' : '(Tomorrow)'}
-             </h3>
-            <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-black">
+                {formatDate(tomorrow)} {today.getDay() === 5 ? '(Monday)' : '(Tomorrow)'}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    tomorrowSlots.forEach(slot => {
+                      const reservationInfo = reservationsByInstrument[instrument.name]?.[`${tomorrowDateString}-${slot}`]
+                      if (!reservationInfo) {
+                        onToggleSlot(instrument.name, slot, tomorrowDateString)
+                      }
+                    })
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-700 text-white font-medium transition-colors"
+                >
+                  Reserve Full Day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    tomorrowSlots.forEach(slot => {
+                      const reservationInfo = reservationsByInstrument[instrument.name]?.[`${tomorrowDateString}-${slot}`]
+                      if (reservationInfo?.reserverUserId === currentUserId) {
+                        onToggleSlot(instrument.name, slot, tomorrowDateString)
+                      }
+                    })
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-md bg-slate-500 hover:bg-slate-600 text-white font-medium transition-colors"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-700 mb-2">
               <span className="tabular-nums">8:00 AM</span>
               <span className="tabular-nums">12:00 PM</span>
               <span className="tabular-nums">5:00 PM</span>
@@ -250,24 +298,22 @@ export function InstrumentSchedulingDialog({
                   const reserver = reservationInfo?.reserverName
                   const isMine = reservationInfo?.reserverUserId === currentUserId
                   const isOptimisticallyUpdating = onIsOptimisticallyUpdating(instrument.name, slot, tomorrowDateString)
+                  const isBlockedByOther = selected && !isMine
                   return (
                     <Tooltip key={slot}>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          onClick={() => onToggleSlot(instrument.name, slot, tomorrowDateString)}
-                          className={`flex-1 relative rounded-md outline-none transition-[transform,box-shadow] focus-visible:ring-2 focus-visible:ring-cyan-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${isOptimisticallyUpdating ? 'animate-pulse' : ''}`}
-                          aria-label={`Toggle ${slot}${reserver ? ` (reserved by ${reserver})` : ''}`}
+                          onClick={() => { if (!isBlockedByOther) onToggleSlot(instrument.name, slot, tomorrowDateString) }}
+                          className={`flex-1 relative rounded-md outline-none transition-[transform,box-shadow] focus-visible:ring-2 focus-visible:ring-cyan-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${isOptimisticallyUpdating ? 'animate-pulse' : ''} ${isBlockedByOther ? 'cursor-not-allowed' : ''}`}
+                          aria-label={`${slot}${reserver ? ` — reserved by ${reserver}` : selected ? ' — reserved' : ' — free'}`}
+                          aria-disabled={isBlockedByOther}
                           disabled={isOptimisticallyUpdating}
                         >
                           <span
                             className={`absolute inset-0 rounded-md ${selected ? (isMine ? 'bg-cyan-500/90' : 'bg-rose-500/80') : 'bg-slate-800/0 hover:bg-slate-700/40'} shadow ${selected ? 'shadow-cyan-500/10' : 'shadow-none'} ${isOptimisticallyUpdating ? 'opacity-70' : ''}`}
                           />
-                          {isOptimisticallyUpdating && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" />
-                            </div>
-                          )}
+
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
@@ -332,9 +378,7 @@ export function InstrumentSchedulingDialog({
           </div>
         </div>
       </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+      </Dialog>
     </>
   )
 }

@@ -128,9 +128,9 @@ export default function TeamPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
-            {instruments.map((instrument) => (
+            {instruments.map((instrument, index) => (
               <InstrumentCard
-                key={instrument.name}
+                key={instrument.ip ?? `${instrument.name}-${index}`}
                 instrument={instrument}
                 isOpen={openInstrument === instrument.name}
                 onOpenChange={(open) => setOpenInstrument(open ? instrument.name : null)}

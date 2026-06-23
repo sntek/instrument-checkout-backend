@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react'
 import { Copyable } from '@/components/Copyable'
 import { InstrumentSchedulingDialog } from '@/components/InstrumentSchedulingDialog'
@@ -22,16 +21,12 @@ function WindowsIcon({ className }: { className?: string }) {
 function LinuxIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      {/* Head — fills full 24×24 */}
       <rect x="0" y="0" width="24" height="24" rx="12" fill="#1a1a2e"/>
-      {/* Face patch */}
       <ellipse cx="12" cy="16" rx="7" ry="6" fill="#f0ede0"/>
-      {/* Eyes */}
       <circle cx="8" cy="10" r="2.6" fill="white"/>
       <circle cx="16" cy="10" r="2.6" fill="white"/>
       <circle cx="8.3" cy="10.3" r="1.3" fill="#111"/>
       <circle cx="16.3" cy="10.3" r="1.3" fill="#111"/>
-      {/* Beak */}
       <ellipse cx="12" cy="14.5" rx="3" ry="1.8" fill="#f0a030"/>
     </svg>
   )
@@ -79,28 +74,28 @@ export function InstrumentCard({
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [tempInstrument, setTempInstrument] = useState<Instrument>(instrument)
-  const [sourcesOpen, setSourcesOpen] = useState(false)
-  const [sourcesEditing, setSourcesEditing] = useState(false)
   const [sourcesTemp, setSourcesTemp] = useState<Source[]>(instrument.sources ?? [])
-  const [sourcesSaving, setSourcesSaving] = useState(false)
+  const [sourcesOpen, setSourcesOpen] = useState(false)
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsEditing(true)
     setTempInstrument(instrument)
+    setSourcesTemp(instrument.sources ?? [])
   }
 
   const handleCancel = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsEditing(false)
     setTempInstrument(instrument)
+    setSourcesTemp(instrument.sources ?? [])
   }
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsSaving(true)
     try {
-      await apiClient.updateInstrument(instrument.name, tempInstrument)
+      await apiClient.updateInstrument(instrument.name, { ...tempInstrument, sources: sourcesTemp })
       toast.success('Instrument updated successfully')
       setIsEditing(false)
       if (onUpdate) onUpdate()
@@ -115,10 +110,11 @@ export function InstrumentCard({
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!window.confirm(`Are you sure you want to delete ${instrument.name}? This will also delete all reservations for this instrument.`)) {
-      return
-    }
-    
+    const confirmed = window.confirm(
+      'Are you sure you want to delete ' + instrument.name + '? This will also delete all reservations for this instrument.'
+    )
+    if (!confirmed) return
+
     setIsSaving(true)
     try {
       await apiClient.deleteInstrument(instrument.name)
@@ -139,34 +135,6 @@ export function InstrumentCard({
     setTempInstrument(prev => ({ ...prev, [name]: value }))
   }
 
-  const openSourcesModal = (e: React.MouseEvent, editing = false) => {
-    e.stopPropagation()
-    setSourcesTemp(instrument.sources ?? [])
-    setSourcesEditing(editing)
-    setSourcesOpen(true)
-  }
-
-  const handleSourcesCancel = () => {
-    setSourcesEditing(false)
-    setSourcesTemp(instrument.sources ?? [])
-  }
-
-  const handleSourcesSave = async () => {
-    setSourcesSaving(true)
-    try {
-      await apiClient.updateInstrument(instrument.name, { ...instrument, sources: sourcesTemp })
-      toast.success('Sources updated')
-      setSourcesEditing(false)
-      setSourcesOpen(false)
-      if (onUpdate) onUpdate()
-      else window.location.reload()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save sources')
-    } finally {
-      setSourcesSaving(false)
-    }
-  }
-
   const handleSourceChange = (index: number, field: keyof Source, value: string) => {
     setSourcesTemp(prev => {
       const next = [...prev]
@@ -184,8 +152,10 @@ export function InstrumentCard({
     setSourcesTemp(prev => prev.filter((_, i) => i !== index))
   }
 
-  const isLongTermCheckedOut = Boolean(instrument.long_term_checkout_user_id)
-  const isMyLongTermCheckout = instrument.long_term_checkout_user_id === currentUserId
+  const openSourcesModal = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSourcesOpen(true)
+  }
 
   return (
     <div
@@ -193,27 +163,22 @@ export function InstrumentCard({
       className="relative bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-7 md:p-8 pb-10 min-h-52 md:min-h-60 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 group"
       onClick={() => !isEditing && onOpenChange(true)}
     >
-      {isLongTermCheckedOut && (
-        <div className="absolute inset-0 bg-purple-900/30 backdrop-blur-[2px] rounded-xl border-2 border-purple-500/50 flex items-center justify-center z-10 pointer-events-none">
-          <div className="bg-purple-900/90 backdrop-blur-sm px-6 py-4 rounded-lg border border-purple-400/50 shadow-2xl">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                <span className="text-2xl">🔒</span>
-              </div>
-              <div>
-                <p className="text-white font-semibold text-lg">Long-term Checkout</p>
-                <p className="text-purple-200 text-sm">Checked out by {instrument.long_term_checkout_user_name}</p>
-              </div>
-            </div>
-            <p className="text-purple-300 text-xs mt-2 max-w-xs">
-              This instrument will remain checked out until {isMyLongTermCheckout ? 'you release' : 'the user releases'} it.
-            </p>
-          </div>
+
+      {!isEditing && (
+        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleEdit}
+            className="p-1.5 rounded-full bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+            title="Edit instrument"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
         </div>
       )}
-      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        {isEditing ? (
-          <>
+
+      {isEditing ? (
+        <>
+          <div className="flex justify-end gap-2 mb-3">
             <button
               onClick={handleDelete}
               disabled={isSaving}
@@ -238,20 +203,8 @@ export function InstrumentCard({
             >
               <X className="w-4 h-4" />
             </button>
-          </>
-        ) : (
-          <button
-            onClick={handleEdit}
-            className="p-1.5 rounded-full bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-            title="Edit instrument"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {isEditing ? (
-        <div className="space-y-4 pt-2">
+          </div>
+          <div className="space-y-3 overflow-y-auto overflow-x-hidden max-h-52">
           <div>
             <label className="text-xs text-slate-400 uppercase font-semibold">Name</label>
             <input
@@ -286,21 +239,51 @@ export function InstrumentCard({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
-          <div>
-            <button
-              onClick={(e) => openSourcesModal(e, true)}
-              className="flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              <Cable className="w-3.5 h-3.5" />
-              Edit Sources
-              {(instrument.sources ?? []).length > 0 && (
-                <span className="bg-cyan-500/20 text-cyan-300 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                  {(instrument.sources ?? []).length}
-                </span>
+
+          {/* Inline sources editing */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <label className="text-xs text-slate-400 uppercase font-semibold mb-2 block">Sources</label>
+            <div className="space-y-1.5">
+              {sourcesTemp.length === 0 && (
+                <p className="text-xs text-slate-600 py-1">No sources yet.</p>
               )}
+              {sourcesTemp.length > 0 && (
+                <div className="grid grid-cols-[1fr_100px_24px] gap-2 text-xs text-slate-500 uppercase font-semibold px-1 pb-1">
+                  <span>Name</span><span>Channel</span><span />
+                </div>
+              )}
+              {sourcesTemp.map((src, i) => (
+                <div key={i} className="grid grid-cols-[1fr_100px_24px] gap-2 items-center">
+                  <input
+                    value={src.name}
+                    onChange={(e) => handleSourceChange(i, 'name', e.target.value)}
+                    placeholder="e.g. internal AFG"
+                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
+                  />
+                  <input
+                    value={src.channel}
+                    onChange={(e) => handleSourceChange(i, 'channel', e.target.value)}
+                    placeholder="CH1"
+                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
+                  />
+                  <button
+                    onClick={() => handleRemoveSource(i)}
+                    className="p-0.5 text-slate-600 hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={handleAddSource}
+              className="flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-300 transition-colors mt-2"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add source
             </button>
           </div>
-        </div>
+          </div>
+        </>
       ) : (
         <>
           <h3 className="text-lg lg:text-base xl:text-xl 2xl:text-2xl font-semibold text-white mb-5 overflow-visible flex items-center gap-3 break-all">
@@ -312,18 +295,18 @@ export function InstrumentCard({
               <span className="text-slate-500 mr-2">IP</span>
               {instrument.ip ? <Copyable text={instrument.ip} os={instrument.os} instrumentName={instrument.name} label="Copy IP Address" /> : <span className="text-slate-600">—</span>}
             </p>
-            <button
-              onClick={(e) => openSourcesModal(e, false)}
-              className="flex items-center gap-2 text-lg text-slate-400 hover:text-cyan-300 transition-colors"
-            >
-              <Cable className="w-5 h-5" />
-              <span>Sources</span>
-              {(instrument.sources ?? []).length > 0 && (
+            {(instrument.sources ?? []).length > 0 && (
+              <button
+                onClick={openSourcesModal}
+                className="flex items-center gap-2 text-lg text-slate-400 hover:text-cyan-300 transition-colors"
+              >
+                <Cable className="w-5 h-5" />
+                <span>Sources</span>
                 <span className="bg-slate-700 text-slate-300 rounded-full px-1.5 py-0.5 text-xs font-medium">
                   {instrument.sources!.length}
                 </span>
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </>
       )}
@@ -343,115 +326,45 @@ export function InstrumentCard({
         />
       )}
 
-      <Dialog open={sourcesOpen} onOpenChange={(open) => { setSourcesOpen(open); if (!open) setSourcesEditing(false) }}>
+      {/* Read-only sources dialog for view mode */}
+      <Dialog open={sourcesOpen} onOpenChange={(open) => { setSourcesOpen(open) }}>
         <DialogContent
           className="sm:max-w-md bg-slate-900 border-slate-800 text-white"
           onClick={(e) => e.stopPropagation()}
         >
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2 text-white">
-                <Cable className="w-4 h-4 text-cyan-400" />
-                Sources — {instrument.name}
-              </DialogTitle>
-              {!sourcesEditing && (
-                <button
-                  onClick={() => { setSourcesTemp(instrument.sources ?? []); setSourcesEditing(true) }}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-300 transition-colors mr-6"
-                >
-                  <Edit2 className="w-3.5 h-3.5" /> Edit
-                </button>
-              )}
-            </div>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Cable className="w-4 h-4 text-cyan-400" />
+              Sources — {instrument.name}
+            </DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            {/* View mode */}
-            {!sourcesEditing && (
-              <>
-                {(instrument.sources ?? []).length === 0 ? (
-                  <p className="text-slate-500 text-sm">No sources configured.</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-slate-500 uppercase border-b border-slate-800">
-                        <th className="text-left font-semibold pb-2 pr-6">Name</th>
-                        <th className="text-left font-semibold pb-2">Channel</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {instrument.sources!.map((src, i) => (
-                        <tr key={i} className="border-b border-slate-800/50 last:border-0">
-                          <td className="pr-6 py-2 text-gray-300">{src.name || '—'}</td>
-                          <td className="py-2 text-gray-400">{src.channel || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </>
-            )}
-
-            {/* Edit mode */}
-            {sourcesEditing && (
-              <div className="space-y-2">
-                {sourcesTemp.length > 0 && (
-                  <div className="grid grid-cols-[1fr_100px_28px] gap-2 text-xs text-slate-500 px-1 pb-1 border-b border-slate-800">
-                    <span>Name</span><span>Channel</span><span />
-                  </div>
-                )}
-                {sourcesTemp.map((src, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_100px_28px] gap-2 items-center">
-                    <input
-                      value={src.name}
-                      onChange={(e) => handleSourceChange(i, 'name', e.target.value)}
-                      placeholder="e.g. internal AFG"
-                      className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 outline-none transition-colors"
-                    />
-                    <input
-                      value={src.channel}
-                      onChange={(e) => handleSourceChange(i, 'channel', e.target.value)}
-                      placeholder="e.g. CH1"
-                      className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 outline-none transition-colors"
-                    />
-                    <button
-                      onClick={() => handleRemoveSource(i)}
-                      className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={handleAddSource}
-                  className="flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 transition-colors pt-1"
-                >
-                  <Plus className="w-4 h-4" /> Add source
-                </button>
-              </div>
+          <div className="py-2">
+            {(instrument.sources ?? []).length === 0 ? (
+              <p className="text-slate-500 text-sm">No sources configured.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-slate-500 uppercase border-b border-slate-800">
+                    <th className="text-left font-semibold pb-2 pr-6">Name</th>
+                    <th className="text-left font-semibold pb-2">Channel</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {instrument.sources!.map((src, i) => (
+                    <tr key={i} className="border-b border-slate-800/50 last:border-0">
+                      <td className="pr-6 py-2 text-gray-300">{src.name || '—'}</td>
+                      <td className="py-2 text-gray-400">{src.channel || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
-
-          {sourcesEditing && (
-            <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
-              <button
-                onClick={handleSourcesCancel}
-                disabled={sourcesSaving}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSourcesSave}
-                disabled={sourcesSaving}
-                className="flex items-center gap-2 px-5 py-2 text-sm bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white rounded-lg transition-all shadow-lg shadow-cyan-500/20"
-              >
-                {sourcesSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Check className="w-4 h-4" /> Save</>}
-              </button>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </div>
   )
 }
+
+
+
