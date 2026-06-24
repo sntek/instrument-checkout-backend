@@ -204,7 +204,7 @@ export function InstrumentCard({
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="space-y-3 overflow-y-auto overflow-x-hidden max-h-52">
+          <div className="space-y-3 overflow-y-auto overflow-x-hidden max-h-56 pr-3 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-track]:bg-transparent">
           <div>
             <label className="text-xs text-slate-400 uppercase font-semibold">Name</label>
             <input
@@ -248,30 +248,32 @@ export function InstrumentCard({
                 <p className="text-xs text-slate-600 py-1">No sources yet.</p>
               )}
               {sourcesTemp.length > 0 && (
-                <div className="grid grid-cols-[1fr_100px_24px] gap-2 text-xs text-slate-500 uppercase font-semibold px-1 pb-1">
-                  <span>Name</span><span>Channel</span><span />
+                <div className="flex gap-2 text-xs text-slate-500 uppercase font-semibold pb-1">
+                  <span className="w-5 shrink-0" />
+                  <span className="flex-1 min-w-0">Name</span>
+                  <span className="w-20 shrink-0">Channel</span>
                 </div>
               )}
               {sourcesTemp.map((src, i) => (
-                <div key={i} className="grid grid-cols-[1fr_100px_24px] gap-2 items-center">
+                <div key={i} className="flex gap-2 items-center">
+                  <button
+                    onClick={() => handleRemoveSource(i)}
+                    className="shrink-0 p-0.5 text-slate-500 hover:text-red-400 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                   <input
                     value={src.name}
                     onChange={(e) => handleSourceChange(i, 'name', e.target.value)}
                     placeholder="e.g. internal AFG"
-                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
+                    className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
                   />
                   <input
                     value={src.channel}
                     onChange={(e) => handleSourceChange(i, 'channel', e.target.value)}
                     placeholder="CH1"
-                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
+                    className="w-20 shrink-0 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
                   />
-                  <button
-                    onClick={() => handleRemoveSource(i)}
-                    className="p-0.5 text-slate-600 hover:text-red-400 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               ))}
             </div>
@@ -295,18 +297,16 @@ export function InstrumentCard({
               <span className="text-slate-500 mr-2">IP</span>
               {instrument.ip ? <Copyable text={instrument.ip} os={instrument.os} instrumentName={instrument.name} label="Copy IP Address" /> : <span className="text-slate-600">—</span>}
             </p>
-            {(instrument.sources ?? []).length > 0 && (
-              <button
-                onClick={openSourcesModal}
-                className="flex items-center gap-2 text-lg text-slate-400 hover:text-cyan-300 transition-colors"
-              >
-                <Cable className="w-5 h-5" />
-                <span>Sources</span>
-                <span className="bg-slate-700 text-slate-300 rounded-full px-1.5 py-0.5 text-xs font-medium">
-                  {instrument.sources!.length}
-                </span>
-              </button>
-            )}
+            {<button
+              onClick={openSourcesModal}
+              className="flex items-center gap-2 text-lg text-slate-400 hover:text-cyan-300 transition-colors"
+            >
+              <Cable className="w-5 h-5" />
+              <span>Sources</span>
+              <span className="bg-slate-700 text-slate-300 rounded-full px-1.5 py-0.5 text-xs font-medium">
+                {(instrument.sources ?? []).length}
+              </span>
+            </button>}
           </div>
         </>
       )}

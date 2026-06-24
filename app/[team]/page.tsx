@@ -90,6 +90,10 @@ export default function TeamPage() {
         toast.warning('Access Denied', {
           description: 'You can only delete your own reservations.',
         });
+      } else if (error instanceof Error && error.message.includes('Slot is already reserved')) {
+        toast.warning('Slot Already Reserved', {
+          description: 'This time slot was just taken. Please refresh and try another slot.',
+        });
       } else {
         toast.error('Error', {
           description: 'Something went wrong. Please try again.',

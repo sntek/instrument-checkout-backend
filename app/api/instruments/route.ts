@@ -78,11 +78,11 @@ export async function PATCH(request: Request) {
 
     const result = await pool.query(
       `UPDATE instruments
-       SET name = COALESCE($1, name), os = $2, ip = $3, sources = $4, 
+       SET name = COALESCE($1, name), os = COALESCE($2, os), ip = COALESCE($3, ip), sources = COALESCE($4::jsonb, sources), 
            long_term_checkout_user_id = $5, long_term_checkout_user_name = $6, updatedAt = $7
        WHERE name = $8
        RETURNING *`,
-      [name, os, ip, JSON.stringify(sources ?? []), long_term_checkout_user_id, long_term_checkout_user_name, new Date().toISOString(), oldName]
+      [name, os ?? null, ip ?? null, sources != null ? JSON.stringify(sources) : null, long_term_checkout_user_id, long_term_checkout_user_name, new Date().toISOString(), oldName]
     );
 
     if (result.rowCount === 0) {

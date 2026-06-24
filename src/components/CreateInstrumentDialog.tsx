@@ -150,11 +150,18 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
             </div>
             {(formData.sources ?? []).length > 0 && (
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_100px_24px] gap-2 text-xs text-slate-500 px-1">
-                  <span>Name</span><span>Channel</span><span />
+                <div className="grid grid-cols-[24px_minmax(0,1fr)_100px] gap-2 text-xs text-slate-500 px-1">
+                  <span /><span>Name</span><span>Channel</span>
                 </div>
                 {(formData.sources ?? []).map((src, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_100px_24px] gap-2 items-center">
+                  <div key={i} className="grid grid-cols-[24px_minmax(0,1fr)_100px] gap-2 items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSource(i)}
+                      className="text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                     <input
                       value={src.name}
                       onChange={(e) => handleSourceChange(i, 'name', e.target.value)}
@@ -167,13 +174,6 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
                       placeholder="e.g. CH1"
                       className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSource(i)}
-                      className="text-slate-500 hover:text-red-400 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
                   </div>
                 ))}
               </div>
