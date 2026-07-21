@@ -7,6 +7,7 @@ export interface Instrument {
   name: string
   os?: string
   ip?: string
+  location?: string
   sources?: Source[]
   team_slug?: string
   long_term_checkout_user_id?: string

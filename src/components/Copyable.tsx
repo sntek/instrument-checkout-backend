@@ -51,7 +51,7 @@ export function Copyable(props: CopyableProps) {
             <Copy className="h-3.5 w-3.5 opacity-60 group-hover/ip:opacity-100" />
           )}
         </button>
-        <span className="pointer-events-none absolute -bottom-8 left-0 z-20 text-[10px] bg-slate-900/90 border border-slate-700/70 text-gray-200 px-1.5 py-0.5 rounded shadow-sm opacity-0 group-hover/ip:opacity-100 transition-opacity">
+        <span className="pointer-events-none absolute -bottom-8 left-0 z-20 whitespace-nowrap text-[10px] bg-slate-900/90 border border-slate-700/70 text-gray-200 px-1.5 py-0.5 rounded shadow-sm opacity-0 group-hover/ip:opacity-100 transition-opacity">
           {copied ? 'Copied!' : label}
         </span>
       </span>

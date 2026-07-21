@@ -43,3 +43,5 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 .vercel
+# Claude Code local settings
+.claude/

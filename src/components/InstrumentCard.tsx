@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Copyable } from '@/components/Copyable'
 import { InstrumentSchedulingDialog } from '@/components/InstrumentSchedulingDialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Instrument, Source } from '@/types'
-import { Edit2, Check, X, Loader2, Trash2, Plus, Cable } from 'lucide-react'
+import { Edit2, Check, X, Loader2, Trash2, Plus, Cable, MapPin } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -75,7 +75,6 @@ export function InstrumentCard({
   const [isSaving, setIsSaving] = useState(false)
   const [tempInstrument, setTempInstrument] = useState<Instrument>(instrument)
   const [sourcesTemp, setSourcesTemp] = useState<Source[]>(instrument.sources ?? [])
-  const [sourcesOpen, setSourcesOpen] = useState(false)
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -152,11 +151,6 @@ export function InstrumentCard({
     setSourcesTemp(prev => prev.filter((_, i) => i !== index))
   }
 
-  const openSourcesModal = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setSourcesOpen(true)
-  }
-
   return (
     <div
       key={instrument.name}
@@ -165,14 +159,38 @@ export function InstrumentCard({
     >
 
       {!isEditing && (
-        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={handleEdit}
-            className="p-1.5 rounded-full bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-            title="Edit instrument"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleEdit}
+                className="p-1.5 rounded-full bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                aria-label="Edit instrument"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="bg-slate-900 border border-slate-700 text-white">
+              <span className="text-xs">Edit</span>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-full bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-cyan-300 transition-colors"
+                aria-label="Last known location"
+              >
+                <MapPin className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="bg-slate-900 border border-slate-700 text-white">
+              <span className="text-xs">
+                <span className="text-slate-400">Last known location: </span>
+                {instrument.location?.trim() ? instrument.location : 'Unknown'}
+              </span>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -239,6 +257,17 @@ export function InstrumentCard({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
+          <div>
+            <label className="text-xs text-slate-400 uppercase font-semibold">Last Known Location</label>
+            <input
+              name="location"
+              value={tempInstrument.location || ''}
+              onChange={handleInputChange}
+              placeholder="BV-1SH8"
+              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white focus:border-cyan-500 outline-none transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
 
           {/* Inline sources editing */}
           <div onClick={(e) => e.stopPropagation()}>
@@ -297,16 +326,42 @@ export function InstrumentCard({
               <span className="text-slate-500 mr-2">IP</span>
               {instrument.ip ? <Copyable text={instrument.ip} os={instrument.os} instrumentName={instrument.name} label="Copy IP Address" /> : <span className="text-slate-600">—</span>}
             </p>
-            {<button
-              onClick={openSourcesModal}
-              className="flex items-center gap-2 text-lg text-slate-400 hover:text-cyan-300 transition-colors"
-            >
-              <Cable className="w-5 h-5" />
-              <span>Sources</span>
-              <span className="bg-slate-700 text-slate-300 rounded-full px-1.5 py-0.5 text-xs font-medium">
-                {(instrument.sources ?? []).length}
-              </span>
-            </button>}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-2 text-lg text-slate-400 hover:text-cyan-300 transition-colors"
+                >
+                  <Cable className="w-5 h-5" />
+                  <span>Sources</span>
+                  <span className="bg-slate-700 text-slate-300 rounded-full px-1.5 py-0.5 text-xs font-medium">
+                    {(instrument.sources ?? []).length}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-slate-900 border border-slate-700 text-white p-3">
+                {(instrument.sources ?? []).length === 0 ? (
+                  <p className="text-slate-500 text-xs">No sources configured.</p>
+                ) : (
+                  <table className="text-xs">
+                    <thead>
+                      <tr className="text-slate-500 uppercase border-b border-slate-800">
+                        <th className="text-left font-semibold pb-1 pr-4">Name</th>
+                        <th className="text-left font-semibold pb-1">Channel</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {instrument.sources!.map((src, i) => (
+                        <tr key={i}>
+                          <td className="pr-4 py-0.5 text-gray-300">{src.name || '—'}</td>
+                          <td className="py-0.5 text-gray-400">{src.channel || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </>
       )}
@@ -325,43 +380,6 @@ export function InstrumentCard({
           onUpdate={onUpdate}
         />
       )}
-
-      {/* Read-only sources dialog for view mode */}
-      <Dialog open={sourcesOpen} onOpenChange={(open) => { setSourcesOpen(open) }}>
-        <DialogContent
-          className="sm:max-w-md bg-slate-900 border-slate-800 text-white"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <Cable className="w-4 h-4 text-cyan-400" />
-              Sources — {instrument.name}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            {(instrument.sources ?? []).length === 0 ? (
-              <p className="text-slate-500 text-sm">No sources configured.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-slate-500 uppercase border-b border-slate-800">
-                    <th className="text-left font-semibold pb-2 pr-6">Name</th>
-                    <th className="text-left font-semibold pb-2">Channel</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {instrument.sources!.map((src, i) => (
-                    <tr key={i} className="border-b border-slate-800/50 last:border-0">
-                      <td className="pr-6 py-2 text-gray-300">{src.name || '—'}</td>
-                      <td className="py-2 text-gray-400">{src.channel || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

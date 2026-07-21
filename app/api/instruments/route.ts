@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       name: row.name,
       os: row.os,
       ip: row.ip,
+      location: row.location,
       sources: row.sources ?? [],
       team_slug: row.team_slug,
       long_term_checkout_user_id: row.long_term_checkout_user_id,
@@ -57,7 +58,7 @@ export async function OPTIONS() {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { oldName, name, os, ip, sources, long_term_checkout_user_id, long_term_checkout_user_name } = body;
+    const { oldName, name, os, ip, location, sources, long_term_checkout_user_id, long_term_checkout_user_name } = body;
 
     if (!oldName) {
       return NextResponse.json({ success: false, error: 'Original instrument name is required' }, { status:400 });
@@ -68,7 +69,7 @@ export async function PATCH(request: Request) {
       if (index === -1) {
         return NextResponse.json({ success: false, error: 'Instrument not found' }, { status: 404 });
       }
-      MOCK_INSTRUMENTS[index] = { ...MOCK_INSTRUMENTS[index], name: name || oldName, os, ip, sources: sources ?? [] };
+      MOCK_INSTRUMENTS[index] = { ...MOCK_INSTRUMENTS[index], name: name || oldName, os, ip, location, sources: sources ?? [] };
       return NextResponse.json({ success: true, data: MOCK_INSTRUMENTS[index] });
     }
 
@@ -78,11 +79,11 @@ export async function PATCH(request: Request) {
 
     const result = await pool.query(
       `UPDATE instruments
-       SET name = COALESCE($1, name), os = COALESCE($2, os), ip = COALESCE($3, ip), sources = COALESCE($4::jsonb, sources), 
-           long_term_checkout_user_id = $5, long_term_checkout_user_name = $6, updatedAt = $7
-       WHERE name = $8
+       SET name = COALESCE($1, name), os = COALESCE($2, os), ip = COALESCE($3, ip), location = COALESCE($4, location), sources = COALESCE($5::jsonb, sources),
+           long_term_checkout_user_id = $6, long_term_checkout_user_name = $7, updatedAt = $8
+       WHERE name = $9
        RETURNING *`,
-      [name, os ?? null, ip ?? null, sources != null ? JSON.stringify(sources) : null, long_term_checkout_user_id, long_term_checkout_user_name, new Date().toISOString(), oldName]
+      [name, os ?? null, ip ?? null, location ?? null, sources != null ? JSON.stringify(sources) : null, long_term_checkout_user_id, long_term_checkout_user_name, new Date().toISOString(), oldName]
     );
 
     if (result.rowCount === 0) {
@@ -95,6 +96,7 @@ export async function PATCH(request: Request) {
         name: result.rows[0].name,
         os: result.rows[0].os,
         ip: result.rows[0].ip,
+        location: result.rows[0].location,
         sources: result.rows[0].sources ?? [],
         long_term_checkout_user_id: result.rows[0].long_term_checkout_user_id,
         long_term_checkout_user_name: result.rows[0].long_term_checkout_user_name
@@ -109,7 +111,7 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, os, ip, sources, team_slug } = body;
+    const { name, os, ip, location, sources, team_slug } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: 'Instrument name is required' }, { status: 400 });
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
           }, { status: 409 });
         }
       }
-      const mockInstrument: Instrument = { name, os, ip, sources: sources ?? [], team_slug };
+      const mockInstrument: Instrument = { name, os, ip, location, sources: sources ?? [], team_slug };
       MOCK_INSTRUMENTS.push(mockInstrument);
       return NextResponse.json({ success: true, data: mockInstrument }, { status: 201 });
     }
@@ -148,10 +150,10 @@ export async function POST(request: Request) {
 
     const now = new Date().toISOString();
     const result = await pool.query(
-      `INSERT INTO instruments (name, os, ip, sources, team_slug, createdAt, updatedAt)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO instruments (name, os, ip, location, sources, team_slug, createdAt, updatedAt)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [name, os, ip, JSON.stringify(sources ?? []), team_slug, now, now]
+      [name, os, ip, location ?? null, JSON.stringify(sources ?? []), team_slug, now, now]
     );
 
     return NextResponse.json({
@@ -160,6 +162,7 @@ export async function POST(request: Request) {
         name: result.rows[0].name,
         os: result.rows[0].os,
         ip: result.rows[0].ip,
+        location: result.rows[0].location,
         sources: result.rows[0].sources ?? []
       }
     }, { status: 201 });

@@ -33,6 +33,7 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
     name: '',
     os: '',
     ip: '',
+    location: '',
     sources: [],
   })
 
@@ -75,7 +76,7 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
       await apiClient.createInstrument({ ...formData, team_slug: teamSlug })
       toast.success('Instrument created successfully')
       setIsOpen(false)
-      setFormData({ name: '', os: '', ip: '', sources: [] })
+      setFormData({ name: '', os: '', ip: '', location: '', sources: [] })
       if (onInstrumentCreated) onInstrumentCreated()
     } catch (error) {
       console.error('Failed to create instrument:', error)
@@ -134,6 +135,16 @@ export function CreateInstrumentDialog({ teamSlug, onInstrumentCreated }: Create
               value={formData.ip}
               onChange={handleInputChange}
               placeholder="e.g. 10.233.65.193"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">Last Known Location</label>
+            <input
+              name="location"
+              value={formData.location}
+              onChange={handleInputChange}
+              placeholder="BV-1SH8"
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
             />
           </div>

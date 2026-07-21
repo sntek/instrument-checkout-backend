@@ -77,6 +77,7 @@ class ApiClient {
       name: instrument.name,
       os: instrument.os,
       ip: instrument.ip,
+      location: instrument.location,
       sources: instrument.sources ?? [],
       team_slug: instrument.team_slug,
       long_term_checkout_user_id: instrument.long_term_checkout_user_id,
