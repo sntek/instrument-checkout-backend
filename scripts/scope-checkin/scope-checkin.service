@@ -1,0 +1,16 @@
+[Unit]
+Description=Report this instrument's IP to the checkout web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Adjust the path and values to your install. These can also live in an
+# EnvironmentFile (see below) instead of inline Environment= lines.
+Environment=CHECKIN_URL=http://lanthanum.global.tektronix.net:3030/api/instruments/checkin
+Environment=SCOPE_NAME=MSO46B-Q000024
+Environment=SCOPE_TOKEN=
+Environment=SCOPE_IFACE=eth0
+Environment=SCOPE_TEAM=rocket-lab
+# EnvironmentFile=/etc/scope-checkin.env
+ExecStart=/usr/local/bin/scope-checkin.sh

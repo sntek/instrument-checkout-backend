@@ -12,6 +12,7 @@ export interface Instrument {
   team_slug?: string
   long_term_checkout_user_id?: string
   long_term_checkout_user_name?: string
+  last_seen?: string
 }
 
 export interface Team {

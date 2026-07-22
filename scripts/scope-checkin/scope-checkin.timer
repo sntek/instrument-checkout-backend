@@ -1,0 +1,11 @@
+[Unit]
+Description=Run scope check-in every 60 seconds
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+AccuracySec=5s
+Unit=scope-checkin.service
+
+[Install]
+WantedBy=timers.target

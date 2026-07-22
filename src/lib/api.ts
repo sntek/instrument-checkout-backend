@@ -81,7 +81,8 @@ class ApiClient {
       sources: instrument.sources ?? [],
       team_slug: instrument.team_slug,
       long_term_checkout_user_id: instrument.long_term_checkout_user_id,
-      long_term_checkout_user_name: instrument.long_term_checkout_user_name
+      long_term_checkout_user_name: instrument.long_term_checkout_user_name,
+      last_seen: instrument.last_seen
     }))
 
     return instruments

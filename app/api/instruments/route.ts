@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
       sources: row.sources ?? [],
       team_slug: row.team_slug,
       long_term_checkout_user_id: row.long_term_checkout_user_id,
-      long_term_checkout_user_name: row.long_term_checkout_user_name
+      long_term_checkout_user_name: row.long_term_checkout_user_name,
+      last_seen: row.last_seen
     }));
 
     const response: ApiResponse<Instrument[]> = {
